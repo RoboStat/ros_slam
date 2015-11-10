@@ -105,10 +105,6 @@ void confirmTrials() {
 		landmarkID++;
 	}
 	trials.clear();
-
-	//refine the triangulation
-	//graph.update();
-	//updateLandmark();
 }
 
 //////////////////////main///////////////////////////
@@ -170,8 +166,12 @@ int main() {
 
 				// run bundle adjustment
 				//graph.printInitials();
+				long u1 = cv::getTickCount();
 				graph.update();
+				long u2 = cv::getTickCount();
+				cout << "optimization:" << float(u2 - u1) / cv::getTickFrequency() << endl;
 				updateLandmark();
+
 			}
 
 			if (!trialState && landmarks.size() < landmarkThre) {
@@ -185,7 +185,10 @@ int main() {
 		long t2 = cv::getTickCount();
 
 		//frame info
-		graph.printInitials();
+		cv::Mat curR,curT;
+		graph.getPose(i,curR,curT);
+		cout << "current pose:" << curR <<endl;
+		cout << curT << endl;
 		cout << "end>> landmarks:" << landmarks.size()
 				<< " trials:" << trials.size() << endl;
 		cout << "time:" << float(t2 - t1) / cv::getTickFrequency() << endl;

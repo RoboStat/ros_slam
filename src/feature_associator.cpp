@@ -132,7 +132,6 @@ void FeatureAssociator::refreshTrials(
 	ptExtractor->compute(frame,newPts,descps);
 	// now focus on right frame
 	this->frame = image2;
-	this->displayFrame = image2.clone();
 	this->matchPts.clear();
 	this->kpts.clear();
 	evenlyDetect(image2, kpts);
