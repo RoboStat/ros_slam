@@ -23,33 +23,50 @@ using namespace std;
 class FeatureAssociator {
 public:
 	FeatureAssociator();
+	//normal tracking done in all the frames
 	void processImage(const cv::Mat& image,
 				      int frameNum,
 					  map<int, Landmark>& landmarks,
 					  vector<Landmark>& trials,
 					  vector<cv::KeyPoint>& unmatched);
 
-	void initTrials(const cv::Mat& image,
+	//first key frame,
+	//find matching points between left and right image
+	void initTrials(const cv::Mat& image1,
+					const cv::Mat& image2,
 					int frameNum,
 					vector<Landmark>& trials);
 
-	void refreshTrials(vector<cv::KeyPoint>& newPts,
+	//subsequent key frame
+	//find matching between unmatched points in left to right
+	//should be called after process image
+	void refreshTrials(const cv::Mat& image2,
+					   vector<cv::KeyPoint>& newPts,
 					   vector<Landmark>& trials);
 
+	//visualize the tracking trace of landmarks across frames
 	void visualizeTrace(const map<int,Landmark>& landmarks,
 						const vector<Landmark>& trials);
+	void visualizePair(const vector<Landmark>& trials);
+
+	//retrieve the display frame
 	cv::Mat getDisplayFrame();
 
 private:
-	vector<int>::iterator findNN(const cv::KeyPoint& point,
-								 float rad, vector<int>& nn);
 	bool trackLandmark(Landmark& landmark);
+	bool pairLandmark(Landmark& landmark);
+	vector<int>::iterator findNN(const cv::KeyPoint& point,
+									 float xl, float xh,
+									 float yl, float yh,
+									 vector<int>& nn);
+	void buildIndexMap(const vector<cv::KeyPoint>& kpts);
 	void evenlyDetect(const cv::Mat& frame, vector<cv::KeyPoint>& kpts);
 
 	cv::Ptr<cv::ORB> ptExtractor;
 	cv::Ptr<cv::DescriptorMatcher> ptMatcher;
 
 	float searchRad;
+	float disparityRad;
 	float singleThre;
 	float doubleRatio;
 
@@ -61,7 +78,6 @@ private:
 	set<int> matchPts;
 	multimap<float, int> xind;
 	multimap<float, int> yind;
-
 };
 
 

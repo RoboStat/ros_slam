@@ -26,13 +26,14 @@ public:
 	FactorGraph(const Camera& camera);
 
 	void addFirstPose(int poseID);
+	void addPose(int poseID, const cv::Mat& R, const cv::Mat& T);
 	void advancePose(int poseID, const cv::Mat& R, const cv::Mat& T);
 	void getPose(int poseID, cv::Mat& R, cv::Mat& T);
 
-	void addLandMark(int landmarkID, const cv::Point3d& location);
-	void getLandMark(int landmarkID, cv::Point3d& location);
+	void addLandMark(int landmarkID, const cv::Point3f& location);
+	void getLandMark(int landmarkID, cv::Point3f& location);
 
-	void addProjection(int poseID, int landmarkID, const cv::Point2d& location);
+	void addProjection(int poseID, int landmarkID, const cv::Point2f& location);
 
 	void update();
 

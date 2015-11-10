@@ -14,15 +14,17 @@ struct Camera {
 
 	Camera(){
 		focalLength = 164.25;
+		baseline = 0.1621;
 		principalPoint = cv::Point2f(213.51,118.43);
-		intrinsic=(cv::Mat_<double>(3,3)<<
+		intrinsic=(cv::Mat_<float>(3,3)<<
 				focalLength,0,principalPoint.x,
 				0,focalLength,principalPoint.y,
 				0,0,1);
 	}
 
-	double focalLength;
-	cv::Point2d principalPoint;
+	float focalLength;
+	cv::Point2f principalPoint;
+	float baseline;
 	cv::Mat intrinsic;
 };
 

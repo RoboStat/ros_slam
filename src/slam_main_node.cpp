@@ -32,77 +32,83 @@ vector<cv::KeyPoint> unmatched;
 
 // features
 unsigned int landmarkThre = 100;
+unsigned int trialThre = 200;
 FeatureAssociator featureAssoc;
 
 // factor graph
 FactorGraph graph(camera);
 
 // sychronize the landmarks position with the one in factor graph
-void updateLandmark(){
-	for(auto it=landmarks.begin(); it!=landmarks.end(); it++) {
-		cv::Point3d p;
-		graph.getLandMark(it->first,p);
+void updateLandmark() {
+	for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
+		cv::Point3f p;
+		graph.getLandMark(it->first, p);
 		it->second.setLocation(p);
 	}
 }
 
 // initialize a key frame
-void initKeyFrame(int frameNum) {
+void initTrials() {
 	// triangulate trial points
 	int sframe = trials.back().getStartFrame();
-	int eframe = frameNum;
-	cv::Mat sr,st,er,et;
-	graph.getPose(sframe,sr,st);
-	graph.getPose(eframe,er,et);
-	cv::Mat sp,ep,sh,eh;
-	cv::hconcat(sr,st,sh);
-	cv::hconcat(er,et,eh);
+	cv::Mat camR, camT;
+	graph.getPose(sframe, camR, camT);
+	camR = camR.t();
+	camT = -camR * camT;
+	cv::Mat camRT;
+	cv::hconcat(camR, camT, camRT);
+	cv::Mat p1 = camera.intrinsic * camRT;
+	camRT.at<float>(0, 3) -= camera.baseline;
+	cv::Mat p2 = camera.intrinsic * camRT;
 
-	sp = camera.intrinsic * sh;
-	ep = camera.intrinsic * eh;
-
-	vector<cv::Point2f> spts, epts;
-	for(auto it=trials.begin(); it!=trials.end(); it++) {
-		spts.push_back(it->firstPoint().pt);
-		epts.push_back(it->lastPoint().pt);
+	vector<cv::Point2f> pts1, pts2;
+	for (auto it = trials.begin(); it != trials.end(); it++) {
+		pts1.push_back(it->firstPoint().pt);
+		pts2.push_back(it->getPair().pt);
 	}
+	//cout << "RT" << camRT <<endl;
+	//cout << "p1" << p1 << endl;
+	//cout << "p2" << p2 << endl;
+	//cout << "pts1" << pts1 << endl;
+	//cout << "pts2" << pts2 << endl;
 
 	cv::Mat outpts;
-	std::cout<<sp<<endl;
-	std::cout<<ep<<endl;
-	std::cout<<spts<<endl;
-	std::cout<<epts<<endl;
-	cv::triangulatePoints(sp,ep,spts,epts,outpts);
+	cv::triangulatePoints(p1, p2, pts1, pts2, outpts);
+	outpts.row(0) = outpts.row(0) / outpts.row(3);
+	outpts.row(1) = outpts.row(1) / outpts.row(3);
+	outpts.row(2) = outpts.row(2) / outpts.row(3);
+	//cout << "triangulated points:" << outpts << endl;
 
-	int colcount=0;
-	for(auto it=trials.begin(); it!=trials.end(); it++){
-		cv::Point3d p = cv::Point3d(outpts.at<double>(0,colcount),
-									outpts.at<double>(1,colcount),
-									outpts.at<double>(2,colcount));
-		// set land mark 3d location
+	int colcount = 0;
+	for (auto it = trials.begin(); it != trials.end(); it++) {
+		cv::Point3f p = cv::Point3f(outpts.at<float>(0, colcount),
+				outpts.at<float>(1, colcount),
+				outpts.at<float>(2, colcount));
 		it->setLocation(p);
-		// add initial value of land mark to factor graph
-		graph.addLandMark(landmarkID,p);
-		// move from trail to true landmarks
-		landmarks[landmarkID]=*it;
-		// add factors
-		int curframe=sframe;
-		for(auto itt=it->pointBegin(); itt!=it->pointEnd(); itt++){
-			graph.addProjection(curframe,landmarkID,itt->pt);
-			curframe++;
-		}
 		colcount++;
-		landmarkID++;
 	}
 
-	// run bundle adjustment
-	graph.update();
+}
 
-	// update landmark position
-	updateLandmark();
+void confirmTrials() {
+	for (auto it = trials.begin(); it != trials.end(); it++) {
+		// add initial value of land mark to factor graph
+		graph.addLandMark(landmarkID, it->getLocation());
+		// move from trail to true landmarks
+		landmarks[landmarkID] = *it;
+		// add factors
+		int curframe = it->getStartFrame();
+		for (auto itt = it->pointBegin(); itt != it->pointEnd() - 1; itt++) {
+			graph.addProjection(curframe, landmarkID, itt->pt);
+			curframe++;
+		}
+		landmarkID++;
+	}
+	trials.clear();
 
-	// start new trials
-	featureAssoc.refreshTrials(unmatched, trials);
+	//refine the triangulation
+	//graph.update();
+	//updateLandmark();
 }
 
 //////////////////////main///////////////////////////
@@ -110,69 +116,84 @@ int main() {
 	cv::namedWindow("SLAM", cv::WINDOW_NORMAL);
 
 	int startFrame = 100;
+	bool trialState = true;
 	for (int i = startFrame; i < 634; i++) {
 		//read image
 		string path = "/home/wenda/Developer/SLAM/";
 		cv::Mat left_frame = cv::imread(path + "resource/left" + fixedNum(i) + ".jpg");
 		cv::Mat right_frame = cv::imread(path + "resource/right" + fixedNum(i) + ".jpg");
 
+		// print frame info
+		cout << "-----------frame " << i << " ------------" << endl;
+		cout << "start>> landmarks:" << landmarks.size()
+				<< " trials:" << trials.size() << endl;
+
 		//track points
-		int t1 = cv::getTickCount();
-		// fist frame
+		long t1 = cv::getTickCount();
+
+		// first frame
 		if (i == startFrame) {
-			featureAssoc.initTrials(left_frame,i, trials);
 			graph.addFirstPose(i);
+			featureAssoc.initTrials(left_frame, right_frame, i, trials);
+			initTrials();
+			featureAssoc.visualizePair(trials);
 		} else {
-			// boot strap
-			if (landmarks.empty()) {
-				featureAssoc.processImage(left_frame, i, landmarks, trials, unmatched);
+			featureAssoc.processImage(left_frame, i, landmarks, trials, unmatched);
 
-				// 2D-2D VO
-				vector<cv::Point2f> pta, ptb;
-				for(auto it=trials.begin(); it!=trials.end(); it++) {
-					pta.push_back(it->lastlastPoint().pt);
-					ptb.push_back(it->lastPoint().pt);
-				}
-
-				cv::Mat E = cv::findEssentialMat(ptb,pta,
-										camera.focalLength,camera.principalPoint,
-										cv::RANSAC, 0.99, 1.0);
-				cv::Mat R,T;
-				cv::recoverPose(E,ptb,pta,R,T,camera.focalLength,camera.principalPoint);
-
-				// insert to graph
-				graph.advancePose(i,R,T);
-
-				if (trials.size() < 2 * landmarkThre) {
-					initKeyFrame(i);
-				}
+			if (trialState && trials.size() < trialThre) {
+				cout << "--confirm all trials--" << endl;
+				confirmTrials();
+				trialState = false;
 			}
-			// normal state
-			else {
-				featureAssoc.processImage(left_frame, i, landmarks, trials, unmatched);
 
+			if (!landmarks.empty()) {
 				// 3D-2D VO
+				vector<cv::Point3f> objPts;
+				vector<cv::Point2f> imgPts;
+				for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
+					objPts.push_back(it->second.getLocation());
+					imgPts.push_back(it->second.lastPoint().pt);
+				}
+				cv::Mat R, Rvec, Tvec, inliers;
+				cv::solvePnPRansac(objPts, imgPts, camera.intrinsic,
+						cv::noArray(), Rvec, Tvec, false, 300, 1.0, 0.99, inliers, cv::SOLVEPNP_P3P);
+				cv::Rodrigues(Rvec, R);
+				//cout<<"R"<<R<<endl;
+				//cout<<"T"<<Tvec<<endl;
+				//cout<<"inlier"<<inliers<<endl;
 
 				// add pose init, and factors
-
-				if (landmarks.size() < landmarkThre) {
-					cout << "new key frame" << endl;
-					initKeyFrame(i);
+				for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
+					graph.addProjection(i, it->first, it->second.lastPoint().pt);
 				}
+				graph.addPose(i, R, Tvec);
+
+				// run bundle adjustment
+				//graph.printInitials();
+				graph.update();
+				updateLandmark();
+			}
+
+			if (!trialState && landmarks.size() < landmarkThre) {
+				cout << "--init new trails--" << endl;
+				featureAssoc.refreshTrials(right_frame, unmatched, trials);
+				initTrials();
+				featureAssoc.visualizePair(trials);
+				trialState = true;
 			}
 		}
-		int t2 = cv::getTickCount();
+		long t2 = cv::getTickCount();
 
 		//frame info
-		cout << i << ":" << "landmarks:" << landmarks.size();
-		cout << " trials:" << trials.size();
-		cout << " time:" << float(t2 - t1) / cv::getTickFrequency() << endl;
 		graph.printInitials();
+		cout << "end>> landmarks:" << landmarks.size()
+				<< " trials:" << trials.size() << endl;
+		cout << "time:" << float(t2 - t1) / cv::getTickFrequency() << endl;
 
 		//visualize frame
-		featureAssoc.visualizeTrace(landmarks,trials);
+		featureAssoc.visualizeTrace(landmarks, trials);
 		cv::imshow("SLAM", featureAssoc.getDisplayFrame());
-		cv::waitKey(0);
+		cv::waitKey(1);
 
 		//send path to rviz
 	}

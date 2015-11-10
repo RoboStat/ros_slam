@@ -3,6 +3,7 @@
 
 //std
 #include <vector>
+#include <utility>
 //opencv
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
@@ -24,8 +25,11 @@ public:
 	void setDescp(const cv::Mat& descp);
 	cv::Mat getDescp() const;
 
-	cv::Point3d getLocation() const;
-	void setLocation(const cv::Point3d loc);
+	cv::Point3f getLocation() const;
+	void setLocation(const cv::Point3f loc);
+
+	cv::KeyPoint getPair() const;
+	void setPair(const cv::KeyPoint& point);
 
 	void setEndFrame(int frame);
 	int getStartFrame() const;
@@ -35,7 +39,9 @@ public:
 private:
 	vector<cv::KeyPoint> trace;
 	cv::Mat descriptor;
-	cv::Point3d location;
+	cv::Point3f location;
+
+	cv::KeyPoint pair;
 
 	int startFrame;
 	int endFrame;

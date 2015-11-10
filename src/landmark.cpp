@@ -57,12 +57,20 @@ cv::Mat Landmark::getDescp() const{
 	return descriptor;
 }
 
-cv::Point3d Landmark::getLocation() const{
+cv::Point3f Landmark::getLocation() const{
 	return location;
 }
 
-void Landmark::setLocation(const cv::Point3d loc) {
+void Landmark::setLocation(const cv::Point3f loc) {
 	location = loc;
+}
+
+cv::KeyPoint Landmark::getPair() const {
+	return pair;
+}
+
+void Landmark::setPair(const cv::KeyPoint& point) {
+	pair=point;
 }
 
 void Landmark::setEndFrame(int frame) {
