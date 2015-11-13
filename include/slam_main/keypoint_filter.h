@@ -42,4 +42,4 @@ private:
 	int numOfCols;
 };
 
-#endif INCLUDE_SLAM_MAIN_KEYPOINT_FILTER_H_
+#endif

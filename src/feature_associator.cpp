@@ -19,13 +19,14 @@ const cv::Scalar BLUE(255,0,0);
 const cv::Scalar GREEN(0,255,0);
 
 FeatureAssociator::FeatureAssociator() :
-				searchRad(15),
+				searchRad(10),
 				disparityRad(30),
-				singleThre(50), doubleRatio(0.8),
-				frameNum(0) {
+				singleThre(50), doubleRatio(0.85),
+				frameNum(0),
+				filter(376,240){
 
-	//ptExtractor = cv::ORB::create(500);
-	ptExtractor = cv::ORB::create(300, 1.2f, 8, 0, 0, 2, cv::ORB::HARRIS_SCORE, 31);
+	//ptExtractor = cv::ORB::create(2000);
+	ptExtractor = cv::ORB::create(300, 1.2f, 4, 0, 0, 2, cv::ORB::HARRIS_SCORE, 31);
 	ptMatcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
 }
 
@@ -76,7 +77,7 @@ void FeatureAssociator::processImage(
 	for (auto it = matchPts.begin(); it != matchPts.end(); it++) {
 		vector<int> nn;
 		nnFinder.findNN(kpts[*it],
-				searchRad/3, searchRad/3, searchRad/3, searchRad/3, nn)
+				searchRad/2, searchRad/2, searchRad/2, searchRad/2, nn);
 		allMatchPts.insert(nn.begin(), nn.end());
 	}
 	// generate the unmatched points
@@ -104,10 +105,13 @@ void FeatureAssociator::initTrials(
 	vector<KeyPoint> kpts1, kpts2;
 	Mat descp1;
 	evenlyDetect(image1, kpts1);
+	//ptExtractor->detect(image1, kpts1);
 	evenlyDetect(image2, kpts2);
+	//ptExtractor->detect(image2, kpts2);
+
 	KeyPointsFilter::retainBest(kpts1, 600);
+
 	ptExtractor->compute(image1, kpts1, descp1);
-	//ptExtractor->detectAndCompute(image, noArray(), initKpts, initDescp);
 
 	//try to match to the right frame
 	this->kpts = kpts2;
@@ -143,7 +147,7 @@ void FeatureAssociator::refreshTrials(
 	int rowCount = 0;
 	for (auto it = newPts.begin(); it != newPts.end(); it++) {
 		Landmark landmark(*it, descps.row(rowCount++).clone(), frameNum);
-		if(pairLandmark(landmark))
+		if(pairLandmark(landmark, nnFinder))
 			trials.push_back(landmark);
 	}
 }
@@ -157,7 +161,7 @@ bool FeatureAssociator::trackLandmark(Landmark& landmark, const NNFinder& nnFind
 
 	// compute descriptors for sub points
 	vector<KeyPoint> subKpts;
-	for (auto subit = boundPtsInd.begin(); subit != boundPts.end(); subit++) {
+	for (auto subit = boundPtsInd.begin(); subit != boundPtsInd.end(); subit++) {
 		subKpts.push_back(kpts[*subit]);
 #if DEBUG
 		circle(displayFrame, kpts[*subit].pt, 1, BLUE);
@@ -207,11 +211,11 @@ bool FeatureAssociator::pairLandmark(Landmark& landmark, const NNFinder& nnFinde
 	// compute nearest neighbour
 	vector<int> boundPtsInd;
 	nnFinder.findNN(landmark.firstPoint(),
-			disparityRad, -5, 3, 3, boundPtsInd);
+			disparityRad, -5, 1, 1, boundPtsInd);
 
 	// compute descriptors for sub points
 	vector<KeyPoint> subKpts;
-	for (auto subit = boundPtsInd.begin(); subit != boundPts.end(); subit++) {
+	for (auto subit = boundPtsInd.begin(); subit != boundPtsInd.end(); subit++) {
 		subKpts.push_back(kpts[*subit]);
 #if DEBUG
 		circle(displayFrame, kpts[*subit].pt, 1, BLUE);
@@ -258,6 +262,7 @@ void FeatureAssociator::evenlyDetect(
 			Mat sub = frame(Rect(c * size, r * size, size, size));
 			vector<KeyPoint> subKpts;
 			ptExtractor->detect(sub, subKpts);
+			//cv::FAST(sub,subKpts,1);
 
 			for (auto it = subKpts.begin(); it != subKpts.end(); it++) {
 				//bias the keypoint position

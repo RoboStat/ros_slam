@@ -2,8 +2,8 @@
 //std
 #include <set>
 
-NNFinder::NNFinder() {
-
+NNFinder::NNFinder(const std::vector<cv::KeyPoint>& points) {
+	build(points);
 }
 
 void NNFinder::build(const std::vector<cv::KeyPoint>& points) {
@@ -28,7 +28,7 @@ void NNFinder::findNN(const cv::KeyPoint& point,
 	using namespace std;
 
 	Point2f pt = point.pt;
-	map<float, int>::iterator itl, ith;
+	multimap<float, int>::const_iterator itl, ith;
 
 	// filter in x range
 	set<int> xset;

@@ -111,7 +111,7 @@ void confirmTrials() {
 int main() {
 	cv::namedWindow("SLAM", cv::WINDOW_NORMAL);
 
-	int startFrame = 100;
+	int startFrame = 60;
 	bool trialState = true;
 	for (int i = startFrame; i < 634; i++) {
 		//read image
@@ -152,11 +152,12 @@ int main() {
 				}
 				cv::Mat R, Rvec, Tvec, inliers;
 				cv::solvePnPRansac(objPts, imgPts, camera.intrinsic,
-						cv::noArray(), Rvec, Tvec, false, 300, 1.0, 0.99, inliers, cv::SOLVEPNP_P3P);
+						cv::noArray(), Rvec, Tvec, false, 3000, 2.0, 0.99, inliers, cv::SOLVEPNP_EPNP);
 				cv::Rodrigues(Rvec, R);
 				//cout<<"R"<<R<<endl;
 				//cout<<"T"<<Tvec<<endl;
 				//cout<<"inlier"<<inliers<<endl;
+				cout<<"P3P points:" << objPts.size() << " inliers:" << inliers.size() << endl;
 
 				// add pose init, and factors
 				for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
@@ -167,10 +168,10 @@ int main() {
 				// run bundle adjustment
 				//graph.printInitials();
 				long u1 = cv::getTickCount();
-				graph.update();
+				//graph.update();
 				long u2 = cv::getTickCount();
 				cout << "optimization:" << float(u2 - u1) / cv::getTickFrequency() << endl;
-				updateLandmark();
+				//updateLandmark();
 
 			}
 
@@ -186,7 +187,8 @@ int main() {
 
 		//frame info
 		cv::Mat curR,curT;
-		graph.getPose(i,curR,curT);
+		if (!landmarks.empty())
+			graph.getPose(i,curR,curT);
 		cout << "current pose:" << curR <<endl;
 		cout << curT << endl;
 		cout << "end>> landmarks:" << landmarks.size()

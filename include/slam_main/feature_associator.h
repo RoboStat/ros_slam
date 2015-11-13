@@ -9,6 +9,8 @@
 #define INCLUDE_SLAM_MAIN_FEATURE_ASSOCIATOR_H_
 
 #include <slam_main/landmark.h>
+#include <slam_main/nn_finder.h>
+#include <slam_main/keypoint_filter.h>
 //std
 #include <vector>
 #include <map>
@@ -59,6 +61,7 @@ private:
 
 	cv::Ptr<cv::ORB> ptExtractor;
 	cv::Ptr<cv::DescriptorMatcher> ptMatcher;
+	KeyPointFilter filter;
 
 	float searchRad;
 	float disparityRad;

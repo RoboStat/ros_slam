@@ -1,12 +1,12 @@
 #include <slam_main/keypoint_filter.h>
 //std
-#include <math>
+#include <math.h>
 #include <algorithm>
 
 KeyPointFilter::KeyPointFilter(int width, int height) {
 	cellWidth = 2;
-	numOfRows = cell(((float)height)/cellWidth);
-	numOfCols = cell(((float)width)/cellWidth);
+	numOfRows = ceil(((float)height)/cellWidth);
+	numOfCols = ceil(((float)width)/cellWidth);
 	reset();
 }
 
@@ -14,7 +14,7 @@ KeyPointFilter::~KeyPointFilter() {
 	delete[] bitmap;
 }
 
-void KeyPointFiltervoid filterByRadius(int radius, 
+void KeyPointFilter::filterByRadius(int radius,
 						const std::vector<cv::KeyPoint>& input,
 						std::vector<cv::KeyPoint>& filtered) {
 	// clear the old bitmap
@@ -25,8 +25,8 @@ void KeyPointFiltervoid filterByRadius(int radius,
 
 	// eliminating by covering
 	for(auto it=input.begin(); it!=input.end(); it++)  {
-		if(!isOccupied(it->pf)) {
-			coverAround(it->pf);
+		if(!isOccupied(it->pt)) {
+			coverAround(it->pt,radius);
 			filtered.push_back(*it);
 		}
 	}
@@ -34,7 +34,8 @@ void KeyPointFiltervoid filterByRadius(int radius,
 
 void KeyPointFilter::reset() {
 	delete[] bitmap;
-	bitmap = new char[cell(numOfRows * numOfCols / 8.0)]();
+	int mapSize = ceil(numOfRows * numOfCols / 8.0);
+	bitmap = new char[mapSize]();
 }
 
 bool KeyPointFilter::isOccupied(const cv::Point2f& point) {
@@ -43,22 +44,22 @@ bool KeyPointFilter::isOccupied(const cv::Point2f& point) {
 	return isSet(row, col);
 }
 
-void KeyPointFilter::coverAround(const cv::Point2f& point) {
+void KeyPointFilter::coverAround(const cv::Point2f& point, int rad) {
 	int row, col;
 	getIndex(point, row, col);
 	set(row, col, rad);
 }
 
 void KeyPointFilter::getIndex(const cv::Point2f& point, int& row, int& col) {
-	row = point.x / cellWidth;
-	col = point.y / cellWidth;
+	row = point.y / cellWidth;
+	col = point.x / cellWidth;
 }
 
 bool KeyPointFilter::isSet(int row, int col) {
 	int ind = row*numOfCols + col;
 	char by = bitmap[ind/8];
 	char t = pow(2, 7-ind%8);
-	return ((unsinged int)(by & t) > 0);
+	return ((unsigned int)(by & t) > 0);
 }
 
 void KeyPointFilter::set(int row, int col, int rad) {
@@ -81,7 +82,7 @@ void KeyPointFilter::setMap(int sInd, int eInd) {
 		sb++;
 		while(sb<eb) {
 			setByte(bitmap+sb, 0, 8);
-			sb++
+			sb++;
 		}
 		setByte(bitmap+eb, 0, eo);
 	}

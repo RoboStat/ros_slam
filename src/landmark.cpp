@@ -83,9 +83,14 @@ int Landmark::getStartFrame() const{
 
 void Landmark::visualizeTrace(cv::Mat& display, cv::Scalar color) const{
 	using namespace cv;
-	KeyPoint lastPt = lastPoint();
-	for (auto it = trace.begin();it!=trace.end(); it++) {
-		line(display, lastPt.pt, it->pt, color);
-		lastPt = *it;
+	//visulize last n points in trace
+	int count=0;
+	Point2f lastPt = lastPoint().pt;
+	circle(display,lastPt,1,Scalar(0,255,0));
+	for (auto it = trace.end()-1;it!=trace.begin()-1; it--) {
+		line(display, lastPt, it->pt, color);
+		lastPt = it->pt;
+		if(count++ > 6)
+			break;
 	}
 }
