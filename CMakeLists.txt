@@ -5,7 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
 )
 
-find_package(OpenCV)
+find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED COMPONENTS 
 	thread 
 	system
@@ -21,6 +21,8 @@ include_directories(include
 
 add_executable(slam_main_node
 	src/landmark.cpp
+	src/keypoint_filter.cpp
+	src/nn_finder.cpp
 	src/feature_associator.cpp
 	src/factor_graph.cpp 
 	src/slam_main_node.cpp)

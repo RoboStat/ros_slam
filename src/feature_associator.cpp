@@ -49,14 +49,14 @@ void FeatureAssociator::processImage(
 	evenlyDetect(frame, kpts);
 	//ptExtractor->detect(frame, kpts);
 
-    //build index map
-	buildIndexMap(kpts);
+    //build NN Finder
+	NNFinder nnFinder(kpts);
 
     //track all current landmark points
 	auto cit = landmarks.begin();
 	while (cit != landmarks.end()) {
-		if (!trackLandmark(cit->second))
-			landmarks.erase(cit++);
+		if (!trackLandmark(cit->second, nnFinder))
+			cit = landmarks.erase(cit);
 		else
 			cit++;
 	}
@@ -64,7 +64,7 @@ void FeatureAssociator::processImage(
 	// track all potential landmark points
 	auto tit = trials.begin();
 	while (tit != trials.end()) {
-		if (!trackLandmark(*tit))
+		if (!trackLandmark(*tit, nnFinder))
 			tit = trials.erase(tit);
 		else
 			tit++;
@@ -72,13 +72,14 @@ void FeatureAssociator::processImage(
 
 	//compute unmatched points
 	set<int> allMatchPts;
+	//eliminate unMathced points which is too close to matched points
 	for (auto it = matchPts.begin(); it != matchPts.end(); it++) {
 		vector<int> nn;
-		vector<int>::iterator nnend = findNN(kpts[*it],
-				searchRad/3, searchRad/3, searchRad/3, searchRad/3, nn);
-		allMatchPts.insert(nn.begin(), nnend);
+		nnFinder.findNN(kpts[*it],
+				searchRad/3, searchRad/3, searchRad/3, searchRad/3, nn)
+		allMatchPts.insert(nn.begin(), nn.end());
 	}
-
+	// generate the unmatched points
 	for (unsigned int npt = 0; npt < kpts.size(); npt++) {
 		if (allMatchPts.find(npt) == allMatchPts.end())
 			unmatched.push_back(kpts[npt]);
@@ -110,11 +111,11 @@ void FeatureAssociator::initTrials(
 
 	//try to match to the right frame
 	this->kpts = kpts2;
-	buildIndexMap(kpts);
+	NNFinder nnFinder(kpts);
 	int rowCount=0;
 	for(auto it=kpts1.begin(); it!=kpts1.end(); it++) {
 		Landmark landmark(*it, descp1.row(rowCount++).clone(),frameNum);
-		if(pairLandmark(landmark))
+		if(pairLandmark(landmark, nnFinder))
 			trials.push_back(landmark);
 	}
 }
@@ -130,12 +131,14 @@ void FeatureAssociator::refreshTrials(
 	Mat descps;
 	KeyPointsFilter::retainBest(newPts, 600);
 	ptExtractor->compute(frame,newPts,descps);
+
 	// now focus on right frame
 	this->frame = image2;
 	this->matchPts.clear();
 	this->kpts.clear();
 	evenlyDetect(image2, kpts);
-	buildIndexMap(kpts);
+	NNFinder nnFinder(kpts);
+
 	// try to match to right frame
 	int rowCount = 0;
 	for (auto it = newPts.begin(); it != newPts.end(); it++) {
@@ -145,16 +148,16 @@ void FeatureAssociator::refreshTrials(
 	}
 }
 
-bool FeatureAssociator::trackLandmark(Landmark& landmark) {
+bool FeatureAssociator::trackLandmark(Landmark& landmark, const NNFinder& nnFinder) {
 	using namespace cv;
 	// compute nearest neighbour
 	vector<int> boundPtsInd;
-	vector<int>::iterator ptsEnd = findNN(landmark.lastPoint(),
+	nnFinder.findNN(landmark.lastPoint(),
 			searchRad, searchRad, searchRad, searchRad, boundPtsInd);
 
 	// compute descriptors for sub points
 	vector<KeyPoint> subKpts;
-	for (auto subit = boundPtsInd.begin(); subit != ptsEnd; subit++) {
+	for (auto subit = boundPtsInd.begin(); subit != boundPts.end(); subit++) {
 		subKpts.push_back(kpts[*subit]);
 #if DEBUG
 		circle(displayFrame, kpts[*subit].pt, 1, BLUE);
@@ -199,16 +202,16 @@ bool FeatureAssociator::trackLandmark(Landmark& landmark) {
 	return false;
 }
 
-bool FeatureAssociator::pairLandmark(Landmark& landmark) {
+bool FeatureAssociator::pairLandmark(Landmark& landmark, const NNFinder& nnFinder) {
 	using namespace cv;
 	// compute nearest neighbour
 	vector<int> boundPtsInd;
-	vector<int>::iterator ptsEnd = findNN(landmark.firstPoint(),
+	nnFinder.findNN(landmark.firstPoint(),
 			disparityRad, -5, 3, 3, boundPtsInd);
 
 	// compute descriptors for sub points
 	vector<KeyPoint> subKpts;
-	for (auto subit = boundPtsInd.begin(); subit != ptsEnd; subit++) {
+	for (auto subit = boundPtsInd.begin(); subit != boundPts.end(); subit++) {
 		subKpts.push_back(kpts[*subit]);
 #if DEBUG
 		circle(displayFrame, kpts[*subit].pt, 1, BLUE);
@@ -220,6 +223,7 @@ bool FeatureAssociator::pairLandmark(Landmark& landmark) {
 	imshow("SLAM", displayFrame);
 	waitKey(0);
 #endif
+
 	Mat subDescps;
 	Mat descp = landmark.getDescp();
 	ptExtractor->compute(frame, subKpts, subDescps);
@@ -238,43 +242,6 @@ bool FeatureAssociator::pairLandmark(Landmark& landmark) {
 		return true;
 	}
 	return false;
-}
-
-vector<int>::iterator FeatureAssociator::findNN(
-		const cv::KeyPoint& point,
-		float xl, float xh, float yl, float yh,
-		vector<int>& nn) {
-
-	using namespace cv;
-	Point2f pt = point.pt;
-	map<float, int>::iterator itl, ith;
-	set<int> xset, yset;
-	// filter in x range
-	itl = xind.lower_bound(pt.x - xl);
-	ith = xind.upper_bound(pt.x + xh);
-	for (; itl != ith; itl++) {
-		xset.insert(itl->second);
-	}
-	// filter in y range
-	itl = yind.lower_bound(pt.y - yl);
-	ith = yind.upper_bound(pt.y + yh);
-	for (; itl != ith; itl++) {
-		yset.insert(itl->second);
-	}
-	// intersect both set
-	nn.resize(xset.size());
-	return set_intersection(xset.begin(), xset.end(), yset.begin(), yset.end(), nn.begin());
-}
-
-void FeatureAssociator::buildIndexMap(const vector<cv::KeyPoint>& kpts) {
-	xind.clear();
-	yind.clear();
-	int kptsCount = 0;
-	for (auto it = kpts.begin(); it != kpts.end(); it++) {
-		xind.insert(make_pair(it->pt.x, kptsCount));
-		yind.insert(make_pair(it->pt.y, kptsCount));
-		kptsCount++;
-	}
 }
 
 void FeatureAssociator::evenlyDetect(

@@ -53,13 +53,8 @@ public:
 	cv::Mat getDisplayFrame();
 
 private:
-	bool trackLandmark(Landmark& landmark);
-	bool pairLandmark(Landmark& landmark);
-	vector<int>::iterator findNN(const cv::KeyPoint& point,
-									 float xl, float xh,
-									 float yl, float yh,
-									 vector<int>& nn);
-	void buildIndexMap(const vector<cv::KeyPoint>& kpts);
+	bool trackLandmark(Landmark& landmark, const NNFinder& nnFinder);
+	bool pairLandmark(Landmark& landmark, const NNFinder& nnFinder);
 	void evenlyDetect(const cv::Mat& frame, vector<cv::KeyPoint>& kpts);
 
 	cv::Ptr<cv::ORB> ptExtractor;
@@ -76,8 +71,6 @@ private:
 
 	vector<cv::KeyPoint> kpts;
 	set<int> matchPts;
-	multimap<float, int> xind;
-	multimap<float, int> yind;
 };
 
 
