@@ -26,7 +26,7 @@ FeatureAssociator::FeatureAssociator() :
 				filter(376,240){
 
 	//ptExtractor = cv::ORB::create(2000);
-	ptExtractor = cv::ORB::create(300, 1.2f, 4, 0, 0, 2, cv::ORB::HARRIS_SCORE, 31);
+	ptExtractor = cv::ORB::create(200, 1.2f, 4, 0, 0, 2, cv::ORB::HARRIS_SCORE, 31);
 	ptMatcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
 }
 
@@ -183,9 +183,10 @@ bool FeatureAssociator::trackLandmark(Landmark& landmark, const NNFinder& nnFind
 		ptMatcher->knnMatch(descp, subDescps, matches, 2);
 
 	// determine whether a good match
-	if (!matches.empty() &&
-			((matches[0].size() == 1 && matches[0][0].distance < singleThre)
-					|| (matches[0].size() == 2 && (matches[0][0].distance / matches[0][1].distance) < doubleRatio))) {
+	if (!matches.empty() && matches[0][0].distance < singleThre &&
+			(matches[0].size() == 1 ||
+					(matches[0].size() == 2 &&
+							(matches[0][0].distance / matches[0][1].distance) < doubleRatio))) {
 
 		//record matched point
 		matchPts.insert(boundPtsInd[matches[0][0].trainIdx]);
@@ -238,9 +239,10 @@ bool FeatureAssociator::pairLandmark(Landmark& landmark, const NNFinder& nnFinde
 		ptMatcher->knnMatch(descp, subDescps, matches, 2);
 
 	// determine whether a good match
-	if (!matches.empty() &&
-			((matches[0].size() == 1 && matches[0][0].distance < singleThre-10)
-					|| (matches[0].size() == 2 && (matches[0][0].distance / matches[0][1].distance) < doubleRatio-0.1))) {
+	if (!matches.empty() && matches[0][0].distance < singleThre &&
+				(matches[0].size() == 1 ||
+						(matches[0].size() == 2 &&
+								(matches[0][0].distance / matches[0][1].distance) < doubleRatio-0.1))) {
 
 		landmark.setPair(subKpts[matches[0][0].trainIdx]);
 		return true;

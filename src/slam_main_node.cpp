@@ -152,7 +152,7 @@ int main() {
 				}
 				cv::Mat R, Rvec, Tvec, inliers;
 				cv::solvePnPRansac(objPts, imgPts, camera.intrinsic,
-						cv::noArray(), Rvec, Tvec, false, 3000, 2.0, 0.99, inliers, cv::SOLVEPNP_EPNP);
+						cv::noArray(), Rvec, Tvec, false, 3000, 1.0, 0.99, inliers, cv::SOLVEPNP_EPNP);
 				cv::Rodrigues(Rvec, R);
 				//cout<<"R"<<R<<endl;
 				//cout<<"T"<<Tvec<<endl;
@@ -168,10 +168,10 @@ int main() {
 				// run bundle adjustment
 				//graph.printInitials();
 				long u1 = cv::getTickCount();
-				//graph.update();
+				graph.update();
 				long u2 = cv::getTickCount();
 				cout << "optimization:" << float(u2 - u1) / cv::getTickFrequency() << endl;
-				//updateLandmark();
+				updateLandmark();
 
 			}
 
