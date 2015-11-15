@@ -6,7 +6,7 @@
 //opencv
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
-
+//ros
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 
@@ -166,9 +166,9 @@ int main( int argc, char** argv ) {
 
 	for (int i = startFrame; i < 634; i++) {
 		//read image
-		string path = "/home/wenda/Developer/SLAM/";
-		cv::Mat left_frame = cv::imread(path + "resource/left" + fixedNum(i) + ".jpg");
-		cv::Mat right_frame = cv::imread(path + "resource/right" + fixedNum(i) + ".jpg");
+		string path = "/home/wseto/Desktop/3/";
+		cv::Mat left_frame = cv::imread(path + "left" + fixedNum(i) + ".jpg");
+		cv::Mat right_frame = cv::imread(path + "right" + fixedNum(i) + ".jpg");
 
 		// print frame info
 		cout << "-----------frame " << i << " ------------" << endl;
@@ -241,6 +241,8 @@ int main( int argc, char** argv ) {
 		if (!landmarks.empty()) {
 
 			graph.getPose(i,curR,curT);
+
+			//send path to rviz
 			geometry_msgs::Point new_p;
 			new_p.x = curT.at<float>(0, 0);
 			new_p.y = curT.at<float>(1, 0);
@@ -260,7 +262,6 @@ int main( int argc, char** argv ) {
 		cv::imshow("SLAM", featureAssoc.getDisplayFrame());
 		cv::waitKey(1);
 
-		//send path to rviz
 	}
 
 	return 0;
