@@ -1,6 +1,7 @@
 #include <slam_main/feature_associator.h>
 #include <slam_main/factor_graph.h>
 #include <slam_main/camera.h>
+#include <slam_main/helper.h>
 //std
 #include <iostream>
 //opencv
@@ -11,18 +12,6 @@
 #include <visualization_msgs/Marker.h>
 
 using namespace std;
-
-#define DEBUG 0
-
-string fixedNum(int value, int digits = 3) {
-	std::string result;
-	while (digits-- > 0) {
-		result += ('0' + value % 10);
-		value /= 10;
-	}
-	std::reverse(result.begin(), result.end());
-	return result;
-}
 
 // camera info
 Camera camera;
@@ -53,30 +42,30 @@ void updateLandmark() {
 // initialize a key frame
 void initTrials() {
 	// triangulate trial points
-	int sframe = trials.back().getStartFrame();
-	cv::Mat camR, camT;
-	graph.getPose(sframe, camR, camT);
-	camR = camR.t();
-	camT = -camR * camT;
-	cv::Mat camRT;
-	cv::hconcat(camR, camT, camRT);
+
+	// prepare camera projection matrix
+	cv::Mat camRT=identityRT();
 	cv::Mat p1 = camera.intrinsic * camRT;
 	camRT.at<float>(0, 3) -= camera.baseline;
 	cv::Mat p2 = camera.intrinsic * camRT;
-
+	// prepare 2D image points
 	vector<cv::Point2f> pts1, pts2;
 	for (auto it = trials.begin(); it != trials.end(); it++) {
 		pts1.push_back(it->firstPoint().pt);
 		pts2.push_back(it->getPair().pt);
 	}
-	//cout << "RT" << camRT <<endl;
-	//cout << "p1" << p1 << endl;
-	//cout << "p2" << p2 << endl;
-	//cout << "pts1" << pts1 << endl;
-	//cout << "pts2" << pts2 << endl;
-
+	// triangulate
 	cv::Mat outpts;
 	cv::triangulatePoints(p1, p2, pts1, pts2, outpts);
+
+	// convert to work coordinate
+	int sframe = trials.back().getStartFrame();
+	cv::Mat posR, posT;
+	graph.getPose(sframe, posR, posT);
+	cv::Mat posRT= fullRT(posR, posT);
+	outpts = posRT*outpts;
+
+	// normalize
 	outpts.row(0) = outpts.row(0) / outpts.row(3);
 	outpts.row(1) = outpts.row(1) / outpts.row(3);
 	outpts.row(2) = outpts.row(2) / outpts.row(3);
@@ -114,59 +103,18 @@ void confirmTrials() {
 int main( int argc, char** argv ) {
 	cv::namedWindow("SLAM", cv::WINDOW_NORMAL);
 
-	int startFrame = 60;
+	int startFrame = 130;
 	bool trialState = true;
 
 	//rviz marker setup
 	ros::init(argc, argv, "slam_traj");
 	ros::NodeHandle n;
 	ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
-
-	// draw line b/w points
-	uint32_t shape = visualization_msgs::Marker::LINE_STRIP;
-	visualization_msgs::Marker marker;
-
-	// Set the frame ID and timestamp.  See the TF tutorials for information on these.
-	marker.header.frame_id = "/my_frame";
-	marker.header.stamp = ros::Time::now();
-
-	// Set the namespace and id for this marker.  This serves to create a unique ID
-	// Any marker sent with the same namespace and id will overwrite the old one
-	marker.ns = "basic_shapes";
-	marker.id = 0;
-
-	// Set the marker type to our shape from earlier
-	marker.type = shape;
-
-	// Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
-	marker.action = visualization_msgs::Marker::ADD;
-
-	// Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
-	marker.pose.position.x = 0;
-	marker.pose.position.y = 0;
-	marker.pose.position.z = 0;
-	marker.pose.orientation.x = 0.0;
-	marker.pose.orientation.y = 0.0;
-	marker.pose.orientation.z = 0.0;
-	marker.pose.orientation.w = 1.0;
-
-	// Set the scale of the marker -- 1x1x1 here means 1m on a side
-	marker.scale.x = 0.01;
-	marker.scale.y = 0.05;
-	marker.scale.z = 1.0;
-
-	// Set the color -- be sure to set alpha to something non-zero!
-	marker.color.r = 0.0f;
-	marker.color.g = 1.0f;
-	marker.color.b = 0.0f;
-	marker.color.a = 1.0;
-
-	marker.lifetime = ros::Duration();
-	//end rviz setup
+	visualization_msgs::Marker marker = createMarker();
 
 	for (int i = startFrame; i < 634; i++) {
 		//read image
-		string path = "/home/wseto/Desktop/3/";
+		string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/sensor_data/";
 		cv::Mat left_frame = cv::imread(path + "left" + fixedNum(i) + ".jpg");
 		cv::Mat right_frame = cv::imread(path + "right" + fixedNum(i) + ".jpg");
 
@@ -239,7 +187,6 @@ int main( int argc, char** argv ) {
 		//frame info
 		cv::Mat curR,curT;
 		if (!landmarks.empty()) {
-
 			graph.getPose(i,curR,curT);
 
 			//send path to rviz

@@ -37,10 +37,13 @@ public:
 	void visualizeTrace(cv::Mat& display, cv::Scalar color) const;
 
 private:
+	// the sequence of tracked location in previous images
 	vector<cv::KeyPoint> trace;
+	// latest descriptor calculated from image
 	cv::Mat descriptor;
+	// its 3D location in world coordinate
 	cv::Point3f location;
-
+	// its pair in right image
 	cv::KeyPoint pair;
 
 	int startFrame;
