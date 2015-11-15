@@ -13,6 +13,9 @@ find_package(Boost REQUIRED COMPONENTS
 
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
+catkin_package(
+)
+
 include_directories(include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
