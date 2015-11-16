@@ -1,4 +1,6 @@
 #include <slam_main/feature_associator.h>
+#include <slam_main/feature_associator_nn.h>
+#include <slam_main/feat_assoc_nn2.h>
 #include <slam_main/factor_graph.h>
 #include <slam_main/camera.h>
 #include <slam_main/helper.h>
@@ -24,8 +26,8 @@ vector<cv::KeyPoint> unmatched;
 
 // features
 unsigned int landmarkThre = 100;
-unsigned int trialThre = 200;
-FeatureAssociator featureAssoc;
+unsigned int trialThre = 300;
+FeatureAssociator* featureAssoc = new FeatAssocNN2();
 
 // factor graph
 FactorGraph graph(camera);
@@ -58,7 +60,7 @@ void initTrials() {
 	cv::Mat outpts;
 	cv::triangulatePoints(p1, p2, pts1, pts2, outpts);
 
-	// convert to work coordinate
+	// convert to world coordinate
 	int sframe = trials.back().getStartFrame();
 	cv::Mat posR, posT;
 	graph.getPose(sframe, posR, posT);
@@ -102,6 +104,7 @@ void confirmTrials() {
 //////////////////////main///////////////////////////
 int main( int argc, char** argv ) {
 	cv::namedWindow("SLAM", cv::WINDOW_NORMAL);
+	cv::resizeWindow("SLAM",760,500);
 
 	int startFrame = 130;
 	bool trialState = true;
@@ -129,13 +132,13 @@ int main( int argc, char** argv ) {
 		// first frame
 		if (i == startFrame) {
 			graph.addFirstPose(i);
-			featureAssoc.initTrials(left_frame, right_frame, i, trials);
+			featureAssoc->initTrials(left_frame, right_frame, i, trials);
 			initTrials();
-			featureAssoc.visualizePair(trials);
+			featureAssoc->visualizePair(trials);
 		} else {
-			featureAssoc.processImage(left_frame, i, landmarks, trials, unmatched);
+			featureAssoc->processImage(left_frame, i, landmarks, trials, unmatched);
 
-			if (trialState && trials.size() < trialThre) {
+			if (trialState && (trials.size() < trialThre || landmarks.empty())) {
 				cout << "--confirm all trials--" << endl;
 				confirmTrials();
 				trialState = false;
@@ -151,12 +154,20 @@ int main( int argc, char** argv ) {
 				}
 				cv::Mat R, Rvec, Tvec, inliers;
 				cv::solvePnPRansac(objPts, imgPts, camera.intrinsic,
-						cv::noArray(), Rvec, Tvec, false, 3000, 1.0, 0.99, inliers, cv::SOLVEPNP_EPNP);
+						cv::noArray(), Rvec, Tvec, false, 3000, 1.0, 0.99, inliers, cv::SOLVEPNP_P3P);
 				cv::Rodrigues(Rvec, R);
-				//cout<<"R"<<R<<endl;
-				//cout<<"T"<<Tvec<<endl;
 				//cout<<"inlier"<<inliers<<endl;
-				cout<<"P3P points:" << objPts.size() << " inliers:" << inliers.size() << endl;
+				cout<<"P3P points:" << objPts.size() << " inliers:" << inliers.rows << endl;
+
+				// set inliers
+				int j=0, count=0;
+				for(auto it = landmarks.begin(); it != landmarks.end(); it++) {
+					if(count++ ==inliers.at<int>(j,0)) {
+						it->second.setInlier(true);
+						if(++j>=inliers.rows)
+							break;
+					}
+				}
 
 				// add pose init, and factors
 				for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
@@ -165,7 +176,6 @@ int main( int argc, char** argv ) {
 				graph.addPose(i, R, Tvec);
 
 				// run bundle adjustment
-				//graph.printInitials();
 				long u1 = cv::getTickCount();
 				graph.update();
 				long u2 = cv::getTickCount();
@@ -176,9 +186,9 @@ int main( int argc, char** argv ) {
 
 			if (!trialState && landmarks.size() < landmarkThre) {
 				cout << "--init new trails--" << endl;
-				featureAssoc.refreshTrials(right_frame, unmatched, trials);
+				featureAssoc->refreshTrials(right_frame, unmatched, trials);
 				initTrials();
-				featureAssoc.visualizePair(trials);
+				featureAssoc->visualizePair(trials);
 				trialState = true;
 			}
 		}
@@ -205,8 +215,8 @@ int main( int argc, char** argv ) {
 		cout << "time:" << float(t2 - t1) / cv::getTickFrequency() << endl;
 
 		//visualize frame
-		featureAssoc.visualizeTrace(landmarks, trials);
-		cv::imshow("SLAM", featureAssoc.getDisplayFrame());
+		featureAssoc->visualizeTrace(landmarks, trials);
+		cv::imshow("SLAM", featureAssoc->getDisplayFrame());
 		cv::waitKey(1);
 
 	}

@@ -1,7 +1,7 @@
 /*
  * feature_associator.h
  *
- *  Created on: Nov 7, 2015
+ *  Created on: Nov 15, 2015
  *      Author: wenda
  */
 
@@ -9,8 +9,6 @@
 #define INCLUDE_SLAM_MAIN_FEATURE_ASSOCIATOR_H_
 
 #include <slam_main/landmark.h>
-#include <slam_main/nn_finder.h>
-#include <slam_main/keypoint_filter.h>
 //std
 #include <vector>
 #include <map>
@@ -25,57 +23,43 @@ using namespace std;
 class FeatureAssociator {
 public:
 	FeatureAssociator();
+	virtual ~FeatureAssociator();
 	//normal tracking done in all the frames
-	void processImage(const cv::Mat& image,
+	virtual void processImage(const cv::Mat& image,
 				      int frameNum,
 					  map<int, Landmark>& landmarks,
 					  vector<Landmark>& trials,
-					  vector<cv::KeyPoint>& unmatched);
+					  vector<cv::KeyPoint>& unmatched)=0;
 
 	//first key frame,
 	//find matching points between left and right image
-	void initTrials(const cv::Mat& image1,
+	virtual void initTrials(const cv::Mat& image1,
 					const cv::Mat& image2,
 					int frameNum,
-					vector<Landmark>& trials);
+					vector<Landmark>& trials)=0;
 
 	//subsequent key frame
 	//find matching between unmatched points in left to right
 	//should be called after process image
-	void refreshTrials(const cv::Mat& image2,
+	virtual void refreshTrials(const cv::Mat& image2,
 					   vector<cv::KeyPoint>& newPts,
-					   vector<Landmark>& trials);
+					   vector<Landmark>& trials)=0;
 
 	//visualize the tracking trace of landmarks across frames
-	void visualizeTrace(const map<int,Landmark>& landmarks,
+	virtual void visualizeTrace( map<int,Landmark>& landmarks,
 						const vector<Landmark>& trials);
-	void visualizePair(const vector<Landmark>& trials);
+	virtual void visualizePair(const vector<Landmark>& trials);
 
 	//retrieve the display frame
-	cv::Mat getDisplayFrame();
+	virtual cv::Mat getDisplayFrame();
 
-private:
-	bool trackLandmark(Landmark& landmark, const NNFinder& nnFinder);
-	bool pairLandmark(Landmark& landmark, const NNFinder& nnFinder);
-	void evenlyDetect(const cv::Mat& frame, vector<cv::KeyPoint>& kpts);
-
-	cv::Ptr<cv::ORB> ptExtractor;
-	cv::Ptr<cv::DescriptorMatcher> ptMatcher;
-	KeyPointFilter filter;
-
-	float searchRad;
-	float disparityRad;
-	float singleThre;
-	float doubleRatio;
-
-	int frameNum;
-	cv::Mat frame;
+protected:
 	cv::Mat displayFrame;
-
-	vector<cv::KeyPoint> kpts;
-	set<int> matchPts;
 };
 
-
+extern const cv::Scalar RED;
+extern const cv::Scalar BLUE;
+extern const cv::Scalar GREEN;
+extern const cv::Scalar YELLOW;
 
 #endif /* INCLUDE_SLAM_MAIN_FEATURE_ASSOCIATOR_H_ */

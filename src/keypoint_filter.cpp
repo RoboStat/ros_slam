@@ -5,9 +5,10 @@
 
 KeyPointFilter::KeyPointFilter(int width, int height) {
 	cellWidth = 2;
-	numOfRows = ceil(((float)height)/cellWidth);
-	numOfCols = ceil(((float)width)/cellWidth);
-	reset();
+	numOfRows = ceil(((float) height) / cellWidth);
+	numOfCols = ceil(((float) width) / cellWidth);
+	int mapSize = ceil(numOfRows * numOfCols / 8.0);
+	bitmap = new char[mapSize]();
 }
 
 KeyPointFilter::~KeyPointFilter() {
@@ -15,8 +16,8 @@ KeyPointFilter::~KeyPointFilter() {
 }
 
 void KeyPointFilter::filterByRadius(int radius,
-						const std::vector<cv::KeyPoint>& input,
-						std::vector<cv::KeyPoint>& filtered) {
+		const std::vector<cv::KeyPoint>& input,
+		std::vector<cv::KeyPoint>& filtered) {
 	// clear the old bitmap
 	reset();
 	filtered.clear();
@@ -24,9 +25,9 @@ void KeyPointFilter::filterByRadius(int radius,
 	// sort points by response
 
 	// eliminating by covering
-	for(auto it=input.begin(); it!=input.end(); it++)  {
-		if(!isOccupied(it->pt)) {
-			coverAround(it->pt,radius);
+	for (auto it = input.begin(); it != input.end(); it++) {
+		if (!isOccupied(it->pt)) {
+			coverAround(it->pt, radius);
 			filtered.push_back(*it);
 		}
 	}
@@ -56,41 +57,41 @@ void KeyPointFilter::getIndex(const cv::Point2f& point, int& row, int& col) {
 }
 
 bool KeyPointFilter::isSet(int row, int col) {
-	int ind = row*numOfCols + col;
-	char by = bitmap[ind/8];
-	char t = pow(2, 7-ind%8);
-	return ((unsigned int)(by & t) > 0);
+	int ind = row * numOfCols + col;
+	char by = bitmap[ind / 8];
+	char t = pow(2, 7 - ind % 8);
+	return ((unsigned int) (by & t) > 0);
 }
 
 void KeyPointFilter::set(int row, int col, int rad) {
-	for(int curR=row-rad; curR<=row+rad; curR++) {
-		int offSet = curR*numOfCols + col;
+	for (int curR = row - rad; curR <= row + rad; curR++) {
+		int offSet = curR * numOfCols + col;
 		setMap(offSet - rad, offSet + rad + 1);
 	}
 }
 
 void KeyPointFilter::setMap(int sInd, int eInd) {
-	int sb = sInd/8;
-	int so = sInd%8;
-	int eb = eInd/8;
-	int eo = eInd%8;
+	int sb = sInd / 8;
+	int so = sInd % 8;
+	int eb = eInd / 8;
+	int eo = eInd % 8;
 
-	if(sb == eb)
-		setByte(bitmap+sb, so, eo);
+	if (sb == eb)
+		setByte(bitmap + sb, so, eo);
 	else {
-		setByte(bitmap+sb, so, 8);
+		setByte(bitmap + sb, so, 8);
 		sb++;
-		while(sb<eb) {
-			setByte(bitmap+sb, 0, 8);
+		while (sb < eb) {
+			setByte(bitmap + sb, 0, 8);
 			sb++;
 		}
-		setByte(bitmap+eb, 0, eo);
+		setByte(bitmap + eb, 0, eo);
 	}
 }
 
 void KeyPointFilter::setByte(char* byte, int s, int e) {
-	char right = pow(2,8-s)-1;
-	char left = pow(2,8-e)-1;
+	char right = pow(2, 8 - s) - 1;
+	char left = pow(2, 8 - e) - 1;
 
 	*byte = *byte | (right & (~left));
 }

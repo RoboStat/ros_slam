@@ -14,6 +14,7 @@
 Landmark::Landmark() {
 	startFrame = -1;
 	endFrame = -1;
+	isinlier = false;
 }
 
 Landmark::Landmark(const cv::KeyPoint& point, const cv::Mat& descp,
@@ -22,6 +23,7 @@ Landmark::Landmark(const cv::KeyPoint& point, const cv::Mat& descp,
 	descriptor = descp;
 	startFrame = sFrame;
 	endFrame = -1;
+	isinlier = false;
 }
 
 void Landmark::appendPoint(const cv::KeyPoint& point) {
@@ -79,6 +81,14 @@ void Landmark::setEndFrame(int frame) {
 
 int Landmark::getStartFrame() const{
 	return startFrame;
+}
+
+void Landmark::setInlier(bool val) {
+	isinlier = val;
+}
+
+bool Landmark::isInlier() const{
+	return isinlier;
 }
 
 void Landmark::visualizeTrace(cv::Mat& display, cv::Scalar color) const{

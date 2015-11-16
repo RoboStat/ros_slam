@@ -27,6 +27,8 @@ add_executable(slam_main_node
 	src/keypoint_filter.cpp
 	src/nn_finder.cpp
 	src/feature_associator.cpp
+	src/feature_associator_nn.cpp
+	src/feat_assoc_nn2.cpp
 	src/factor_graph.cpp 
 	src/slam_main_node.cpp)
 

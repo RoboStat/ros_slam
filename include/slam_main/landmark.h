@@ -34,6 +34,9 @@ public:
 	void setEndFrame(int frame);
 	int getStartFrame() const;
 
+	void setInlier(bool val);
+	bool isInlier() const;
+
 	void visualizeTrace(cv::Mat& display, cv::Scalar color) const;
 
 private:
@@ -45,6 +48,8 @@ private:
 	cv::Point3f location;
 	// its pair in right image
 	cv::KeyPoint pair;
+	// is classified as inlier during
+	bool isinlier;
 
 	int startFrame;
 	int endFrame;
