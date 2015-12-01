@@ -25,29 +25,35 @@ public:
 	FeatureAssociator();
 	virtual ~FeatureAssociator();
 	//normal tracking done in all the frames
-	virtual void processImage(const cv::Mat& image,
-				      int frameNum,
-					  map<int, Landmark>& landmarks,
-					  vector<Landmark>& trials,
-					  vector<cv::KeyPoint>& unmatched)=0;
+	virtual void processImage(
+			const cv::Mat& image1,
+			const cv::Mat& image2,
+			int frameNum,
+			map<int, Landmark>& landmarks,
+			vector<Landmark>& trials,
+			vector<cv::KeyPoint>& unmatched)=0;
 
 	//first key frame,
 	//find matching points between left and right image
-	virtual void initTrials(const cv::Mat& image1,
-					const cv::Mat& image2,
-					int frameNum,
-					vector<Landmark>& trials)=0;
+	virtual void initTrials(
+			const cv::Mat& image1,
+			const cv::Mat& image2,
+			int frameNum,
+			vector<Landmark>& trials)=0;
 
 	//subsequent key frame
 	//find matching between unmatched points in left to right
 	//should be called after process image
-	virtual void refreshTrials(const cv::Mat& image2,
-					   vector<cv::KeyPoint>& newPts,
-					   vector<Landmark>& trials)=0;
+	virtual void refreshTrials(
+			const cv::Mat& image1,
+			const cv::Mat& image2,
+			int framNum,
+			vector<cv::KeyPoint>& newPts,
+			vector<Landmark>& trials)=0;
 
 	//visualize the tracking trace of landmarks across frames
-	virtual void visualizeTrace( map<int,Landmark>& landmarks,
-						const vector<Landmark>& trials);
+	virtual void visualizeTrace(map<int, Landmark>& landmarks,
+			const vector<Landmark>& trials);
 	virtual void visualizePair(const vector<Landmark>& trials);
 
 	//retrieve the display frame

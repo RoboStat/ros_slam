@@ -5,6 +5,7 @@
  *      Author: wenda
  */
 #include <slam_main/factor_graph.h>
+#include <slam_main/helper.h>
 //std
 #include <iostream>
 
@@ -29,7 +30,13 @@ FactorGraph::FactorGraph(const Camera& camera) {
 	K = gtsam::Cal3_S2::shared_ptr(
 			new gtsam::Cal3_S2(camera.focalLength, camera.focalLength,
 					0.0, camera.principalPoint.x, camera.principalPoint.y));
+
+	KS = gtsam::Cal3_S2Stereo::shared_ptr(
+			new gtsam::Cal3_S2Stereo(camera.focalLength,camera.focalLength,
+					0.0,camera.principalPoint.x, camera.principalPoint.y,camera.baseline));
+
 	measurementNoise = gtsam::noiseModel::Isotropic::Sigma(2, 1.0);
+	stereoNoise = gtsam::noiseModel::Isotropic::Sigma(3,1);
 
 	parameters.relinearizeThreshold = 0.01;
 	parameters.relinearizeSkip = 1;
@@ -57,10 +64,11 @@ void FactorGraph::addPose(int poseID, const cv::Mat& R, const cv::Mat& T) {
 			gtsam::Pose3(convertFromCV(invR,invT)));
 }
 
-void FactorGraph::advancePose(int poseID, const cv::Mat& R, const cv::Mat& T) {
+void FactorGraph::advancePose(int poseID, cv::Mat R, cv::Mat T) {
 	gtsam::Pose3 lastpose = initial.at<gtsam::Pose3>(gtsam::symbol('x', poseID - 1));
 	gtsam::Matrix4 pm = lastpose.matrix();
 	// convert R,T to gtsam matrix
+	inverseRT(R,T);
 	gtsam::Matrix4 change = convertFromCV(R,T);
 	// increment the pose
 	pm = pm * change;
@@ -107,6 +115,13 @@ void FactorGraph::addProjection(int poseID, int landmarkID, const cv::Point2f& l
 	graph.push_back(gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>(
 			gtsam::Point2(location.x, location.y), measurementNoise,
 			gtsam::Symbol('x', poseID), gtsam::Symbol('l', landmarkID), K));
+}
+
+void FactorGraph::addStereo(int poseID, int landmarkID,
+			const cv::Point2f& loc1, const cv::Point2f& loc2) {
+	graph.push_back(gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>(
+			gtsam::StereoPoint2(loc1.x, loc2.x, loc1.y), stereoNoise,
+	        gtsam::Symbol('x', poseID), gtsam::Symbol('l', landmarkID), KS));
 }
 
 void FactorGraph::update() {

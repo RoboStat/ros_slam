@@ -1,6 +1,5 @@
 #include <slam_main/feature_associator.h>
 #include <slam_main/feature_associator_nn.h>
-#include <slam_main/feat_assoc_nn2.h>
 #include <slam_main/factor_graph.h>
 #include <slam_main/camera.h>
 #include <slam_main/helper.h>
@@ -24,13 +23,17 @@ map<int, Landmark> landmarks;
 vector<Landmark> trials;
 vector<cv::KeyPoint> unmatched;
 
-// features
+// features associator
 unsigned int landmarkThre = 100;
 unsigned int trialThre = 300;
-FeatureAssociator* featureAssoc = new FeatAssocNN2();
+FeatureAssociator* featureAssoc = new FeatureAssociatorNN();
 
 // factor graph
 FactorGraph graph(camera);
+
+// Pose Chain
+vector<cv::Mat> allR;
+vector<cv::Mat> allT;
 
 // sychronize the landmarks position with the one in factor graph
 void updateLandmark() {
@@ -42,60 +45,74 @@ void updateLandmark() {
 }
 
 // initialize a key frame
-void initTrials() {
-	// triangulate trial points
-
+void triangulate(const cv::Mat& pts1,
+				 const cv::Mat& pts2,
+				 cv::Mat& outpts) {
 	// prepare camera projection matrix
 	cv::Mat camRT=identityRT();
 	cv::Mat p1 = camera.intrinsic * camRT;
 	camRT.at<float>(0, 3) -= camera.baseline;
 	cv::Mat p2 = camera.intrinsic * camRT;
-	// prepare 2D image points
-	vector<cv::Point2f> pts1, pts2;
-	for (auto it = trials.begin(); it != trials.end(); it++) {
-		pts1.push_back(it->firstPoint().pt);
-		pts2.push_back(it->getPair().pt);
-	}
+
 	// triangulate
-	cv::Mat outpts;
 	cv::triangulatePoints(p1, p2, pts1, pts2, outpts);
+
+	// normalize
+	outpts.row(0) = outpts.row(0) / outpts.row(3);
+	outpts.row(1) = outpts.row(1) / outpts.row(3);
+	outpts.row(2) = outpts.row(2) / outpts.row(3);
+	outpts.row(3) = outpts.row(3) / outpts.row(3);
+}
+
+void confirmTrials() {
+	// triangulate landmarks
+	// prepare points
+	cv::Mat pts1(2,trials.size(),cv::DataType<float>::type),
+			pts2(2,trials.size(),cv::DataType<float>::type);
+	int col = 0;
+	for (auto it = trials.begin(); it != trials.end(); it++) {
+		cv::KeyPoint k1, k2;
+		it->firstPointPair(k1, k2);
+		pts1.at<float>(0,col) = k1.pt.x;
+		pts1.at<float>(1,col) = k1.pt.y;
+		pts2.at<float>(0,col) = k2.pt.x;
+		pts2.at<float>(1,col) = k2.pt.y;
+		col++;
+	}
+	cv::Mat pts3D;
+	triangulate(pts1,pts2,pts3D);
 
 	// convert to world coordinate
 	int sframe = trials.back().getStartFrame();
 	cv::Mat posR, posT;
 	graph.getPose(sframe, posR, posT);
 	cv::Mat posRT= fullRT(posR, posT);
-	outpts = posRT*outpts;
-
-	// normalize
-	outpts.row(0) = outpts.row(0) / outpts.row(3);
-	outpts.row(1) = outpts.row(1) / outpts.row(3);
-	outpts.row(2) = outpts.row(2) / outpts.row(3);
-	//cout << "triangulated points:" << outpts << endl;
+	pts3D = posRT*pts3D;
 
 	int colcount = 0;
 	for (auto it = trials.begin(); it != trials.end(); it++) {
-		cv::Point3f p = cv::Point3f(outpts.at<float>(0, colcount),
-				outpts.at<float>(1, colcount),
-				outpts.at<float>(2, colcount));
+		// add location to landmark data structure
+		cv::Point3f p = cv::Point3f(pts3D.at<float>(0, colcount),
+									pts3D.at<float>(1, colcount),
+									pts3D.at<float>(2, colcount));
 		it->setLocation(p);
 		colcount++;
-	}
 
-}
+		// add initial value of land mark to factor graph data structure
+		graph.addLandMark(landmarkID, p);
 
-void confirmTrials() {
-	for (auto it = trials.begin(); it != trials.end(); it++) {
-		// add initial value of land mark to factor graph
-		graph.addLandMark(landmarkID, it->getLocation());
 		// move from trail to true landmarks
 		landmarks[landmarkID] = *it;
+
 		// add factors
 		int curframe = it->getStartFrame();
-		for (auto itt = it->pointBegin(); itt != it->pointEnd() - 1; itt++) {
-			graph.addProjection(curframe, landmarkID, itt->pt);
+		for (int i=0; i<it->getTraceSize(); i++) {
+			cv::KeyPoint p1, p2;
+			it->getPointPair(i,p1,p2);
+			graph.addStereo(curframe, landmarkID, p1.pt, p2.pt);
 			curframe++;
 		}
+
 		landmarkID++;
 	}
 	trials.clear();
@@ -106,7 +123,7 @@ int main( int argc, char** argv ) {
 	cv::namedWindow("SLAM", cv::WINDOW_NORMAL);
 	cv::resizeWindow("SLAM",760,500);
 
-	int startFrame = 130;
+	int startFrame = 1;
 	bool trialState = true;
 
 	//rviz marker setup
@@ -133,10 +150,9 @@ int main( int argc, char** argv ) {
 		if (i == startFrame) {
 			graph.addFirstPose(i);
 			featureAssoc->initTrials(left_frame, right_frame, i, trials);
-			initTrials();
 			featureAssoc->visualizePair(trials);
 		} else {
-			featureAssoc->processImage(left_frame, i, landmarks, trials, unmatched);
+			featureAssoc->processImage(left_frame, right_frame, i, landmarks, trials, unmatched);
 
 			if (trialState && (trials.size() < trialThre || landmarks.empty())) {
 				cout << "--confirm all trials--" << endl;
@@ -145,21 +161,45 @@ int main( int argc, char** argv ) {
 			}
 
 			if (!landmarks.empty()) {
-				// 3D-2D VO
-				vector<cv::Point3f> objPts;
+				// prepare points
+				cv::Mat pts1(2,landmarks.size(),cv::DataType<float>::type),
+						pts2(2,landmarks.size(),cv::DataType<float>::type);
 				vector<cv::Point2f> imgPts;
+				int colcount = 0;
 				for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
-					objPts.push_back(it->second.getLocation());
-					imgPts.push_back(it->second.lastPoint().pt);
+					cv::KeyPoint k1, k2;
+					it->second.prevPointPair(k1, k2);
+					pts1.at<float>(0,colcount) = k1.pt.x;
+					pts1.at<float>(1,colcount) = k1.pt.y;
+					pts2.at<float>(0,colcount) = k2.pt.x;
+					pts2.at<float>(1,colcount) = k2.pt.y;
+					imgPts.push_back(it->second.curLeftPoint().pt);
+					colcount++;
 				}
+
+				// triangulate 3D points
+				cv::Mat pts3D;
+				triangulate(pts1,pts2,pts3D);
+
+				// prepare 3D points
 				cv::Mat R, Rvec, Tvec, inliers;
+				vector<cv::Point3f> objPts;
+				for (int c=0; c<pts3D.cols; c++) {
+					objPts.push_back(cv::Point3f(pts3D.at<float>(0,c),
+												 pts3D.at<float>(1,c),
+												 pts3D.at<float>(2,c)));
+				}
+
+				// incremental 3D-2D VO
 				cv::solvePnPRansac(objPts, imgPts, camera.intrinsic,
 						cv::noArray(), Rvec, Tvec, false, 3000, 1.0, 0.99, inliers, cv::SOLVEPNP_P3P);
 				cv::Rodrigues(Rvec, R);
-				//cout<<"inlier"<<inliers<<endl;
-				cout<<"P3P points:" << objPts.size() << " inliers:" << inliers.rows << endl;
 
-				// set inliers
+				//cout << R << Tvec << endl;
+				//cout << inliers << endl;
+				cout<<"P3P points:" << imgPts.size() << " inliers:" << inliers.rows << endl;
+
+				//set inliers
 				int j=0, count=0;
 				for(auto it = landmarks.begin(); it != landmarks.end(); it++) {
 					if(count++ ==inliers.at<int>(j,0)) {
@@ -169,11 +209,19 @@ int main( int argc, char** argv ) {
 					}
 				}
 
-				// add pose init, and factors
+				// add stereo factors
 				for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
-					graph.addProjection(i, it->first, it->second.lastPoint().pt);
+					if (it->second.isInlier()) {
+						cv::KeyPoint p1, p2;
+						it->second.curPointPair(p1, p2);
+						graph.addStereo(i, it->first, p1.pt, p2.pt);
+					}
 				}
-				graph.addPose(i, R, Tvec);
+
+				// add initial pose estimation
+				allR.push_back(R);
+				allT.push_back(Tvec);
+				graph.advancePose(i, R, Tvec);
 
 				// run bundle adjustment
 				long u1 = cv::getTickCount();
@@ -181,13 +229,11 @@ int main( int argc, char** argv ) {
 				long u2 = cv::getTickCount();
 				cout << "optimization:" << float(u2 - u1) / cv::getTickFrequency() << endl;
 				updateLandmark();
-
 			}
 
 			if (!trialState && landmarks.size() < landmarkThre) {
 				cout << "--init new trails--" << endl;
-				featureAssoc->refreshTrials(right_frame, unmatched, trials);
-				initTrials();
+				featureAssoc->refreshTrials(left_frame, right_frame,i, unmatched, trials);
 				featureAssoc->visualizePair(trials);
 				trialState = true;
 			}

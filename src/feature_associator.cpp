@@ -40,7 +40,9 @@ void FeatureAssociator::visualizeTrace(
 void FeatureAssociator::visualizePair(const vector<Landmark>& trials){
 	using namespace cv;
 	for(auto it=trials.begin(); it!=trials.end(); it++) {
-		line(displayFrame,it->firstPoint().pt,it->getPair().pt,Scalar(0,0,255));
+		KeyPoint p1,p2;
+		it->firstPointPair(p1,p2);
+		line(displayFrame,p1.pt,p2.pt,Scalar(0,0,255));
 	}
 }
 

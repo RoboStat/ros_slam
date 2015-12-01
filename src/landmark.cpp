@@ -17,37 +17,47 @@ Landmark::Landmark() {
 	isinlier = false;
 }
 
-Landmark::Landmark(const cv::KeyPoint& point, const cv::Mat& descp,
-		int sFrame) {
-	trace.push_back(point);
+Landmark::Landmark(const cv::KeyPoint& point1, const cv::KeyPoint& point2
+		, const cv::Mat& descp, int sFrame) {
+	traceLeft.push_back(point1);
+	traceRight.push_back(point2);
 	descriptor = descp;
 	startFrame = sFrame;
 	endFrame = -1;
 	isinlier = false;
 }
 
-void Landmark::appendPoint(const cv::KeyPoint& point) {
-	trace.push_back(point);
+void Landmark::appendPointPair(const cv::KeyPoint& point1, const cv::KeyPoint& point2){
+	traceLeft.push_back(point1);
+	traceRight.push_back(point2);
 }
 
-cv::KeyPoint Landmark::firstPoint() const {
-	return *(trace.begin());
+void Landmark::firstPointPair(cv::KeyPoint& point1, cv::KeyPoint& point2) const {
+	point1 = *(traceLeft.begin());
+	point2 = *(traceRight.begin());
 }
 
-cv::KeyPoint Landmark::lastPoint() const {
-	return trace.back();
+void Landmark::prevPointPair(cv::KeyPoint& point1, cv::KeyPoint& point2) const {
+	point1 = *(traceLeft.end()-2);
+	point2 = *(traceRight.end()-2);
 }
 
-cv::KeyPoint Landmark::lastlastPoint() const {
-	return *(trace.end()-1);
+void Landmark::curPointPair(cv::KeyPoint& point1, cv::KeyPoint& point2) const {
+	point1 = traceLeft.back();
+	point2 = traceRight.back();
 }
 
-vector<cv::KeyPoint>::iterator Landmark::pointBegin() {
-	return trace.begin();
+void Landmark::getPointPair(int index, cv::KeyPoint& point1, cv::KeyPoint& point2) const {
+	point1 = traceLeft[index];
+	point2 = traceRight[index];
 }
 
-vector<cv::KeyPoint>::iterator Landmark::pointEnd() {
-	return trace.end();
+cv::KeyPoint Landmark::curLeftPoint() const {
+	return traceLeft.back();
+}
+
+int Landmark::getTraceSize() const {
+	return traceLeft.size();
 }
 
 
@@ -65,14 +75,6 @@ cv::Point3f Landmark::getLocation() const{
 
 void Landmark::setLocation(const cv::Point3f loc) {
 	location = loc;
-}
-
-cv::KeyPoint Landmark::getPair() const {
-	return pair;
-}
-
-void Landmark::setPair(const cv::KeyPoint& point) {
-	pair=point;
 }
 
 void Landmark::setEndFrame(int frame) {
@@ -95,9 +97,9 @@ void Landmark::visualizeTrace(cv::Mat& display, cv::Scalar color) const{
 	using namespace cv;
 	//visulize last n points in trace
 	int count=0;
-	Point2f lastPt = lastPoint().pt;
+	Point2f lastPt =curLeftPoint().pt;
 	circle(display,lastPt,1,Scalar(0,255,0));
-	for (auto it = trace.end()-1;it!=trace.begin()-1; it--) {
+	for (auto it = traceLeft.end()-1;it!=traceLeft.begin()-1; it--) {
 		line(display, lastPt, it->pt, color);
 		lastPt = it->pt;
 		if(count++ > 6)
