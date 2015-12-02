@@ -47,7 +47,7 @@ private:
 	std::vector<cv::KeyPoint> unmatched;
 
 	// features associator
-	unsigned int landmarkThre = 100;
+	unsigned int landmarkThre = 50;
 	unsigned int trialThre = 300;
 	FeatureAssociator* featureAssoc;
 

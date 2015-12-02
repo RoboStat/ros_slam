@@ -20,7 +20,7 @@ FeatureAssociatorNN::FeatureAssociatorNN() :
 		flann(new cv::flann::LshIndexParams(20, 10, 2)){
 
 	//ptExtractor = cv::ORB::create(2000);
-	ptExtractor = cv::ORB::create(200, 1.2f, 4, 0, 0, 2, cv::ORB::HARRIS_SCORE, 31);
+	ptExtractor = cv::ORB::create(200, 1.2f, 4, 0, 0, 2, cv::ORB::HARRIS_SCORE, 21);
 	ptMatcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
 }
 
