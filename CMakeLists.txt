@@ -29,7 +29,8 @@ add_executable(slam_main_node
 	src/nn_finder.cpp
 	src/feature_associator.cpp
 	src/feature_associator_nn.cpp
-	src/factor_graph.cpp 
+	src/factor_graph.cpp
+	src/visual_odometry.cpp 
 	src/slam_main_node.cpp)
 
 target_link_libraries(slam_main_node
