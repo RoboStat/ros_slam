@@ -14,7 +14,7 @@ class Landmark {
 public:
 	Landmark();
 	Landmark(const cv::KeyPoint& point1, const cv::KeyPoint& point2,
-			const cv::Mat& descp, int sFrame);
+			const cv::Mat& descp1, const cv::Mat& descp2, int sFrame);
 
 	void appendPointPair(const cv::KeyPoint& point1, const cv::KeyPoint& point2);
 	void firstPointPair(cv::KeyPoint& point1, cv::KeyPoint& point2) const;
@@ -24,8 +24,9 @@ public:
 	cv::KeyPoint curLeftPoint() const;
 	int getTraceSize() const;
 
-	void setDescp(const cv::Mat& descp);
-	cv::Mat getDescp() const;
+	void setDescpPair(const cv::Mat& descp1, const cv::Mat& descp2);
+	cv::Mat getLeftDescp() const;
+	cv::Mat getRightDescp() const;
 
 	cv::Point3f getLocation() const;
 	void setLocation(const cv::Point3f loc);
@@ -43,7 +44,8 @@ private:
 	vector<cv::KeyPoint> traceLeft;
 	vector<cv::KeyPoint> traceRight;
 	// latest descriptor calculated from image
-	cv::Mat descriptor;
+	cv::Mat descpLeft;
+	cv::Mat descpRight;
 	// its 3D location in world coordinate
 	cv::Point3f location;
 	// is classified as inlier during

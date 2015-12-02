@@ -142,16 +142,16 @@ bool FeatureAssociatorNN::trackLandmark(Landmark& landmark,
 	landmark.curPointPair(point1, point2);
 	// ouput
 	cv::KeyPoint newPoint1, newPoint2;
-	cv::Mat newDescp;
+	cv::Mat newDescp1, newDescp2;
 	int matchID1, matchID2;
 	// do track
-	if (trackPoint(point1, landmark.getDescp(), nnFinder1, kpts1, image1,
-			newPoint1, newDescp, matchID1) &&
-			trackPoint(point2, landmark.getDescp(), nnFinder2, kpts2, image2,
-					newPoint2, newDescp, matchID2)) {
+	if (trackPoint(point1, landmark.getLeftDescp(), nnFinder1, kpts1, image1,
+			newPoint1, newDescp1, matchID1) &&
+			trackPoint(point2, landmark.getRightDescp(), nnFinder2, kpts2, image2,
+					newPoint2, newDescp2, matchID2)) {
 
 		landmark.appendPointPair(newPoint1, newPoint2);
-		landmark.setDescp(newDescp);
+		landmark.setDescpPair(newDescp1, newDescp2);
 		matchPts1.insert(matchID1);
 		matchPts2.insert(matchID2);
 
@@ -243,7 +243,10 @@ void FeatureAssociatorNN::matchAdd(
 	// add to the trials
 	trials.clear();
 	for (auto it = goodmatches.begin(); it != goodmatches.end(); it++) {
-		Landmark landmark(kpts1[it->queryIdx],kpts2[it->trainIdx], descp1.row(it->queryIdx).clone(), frameNum);
+		Landmark landmark(kpts1[it->queryIdx],kpts2[it->trainIdx],
+				descp1.row(it->queryIdx).clone(),
+				descp2.row(it->trainIdx).clone(),
+				frameNum);
 		trials.push_back(landmark);
 	}
 

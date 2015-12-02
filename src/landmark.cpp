@@ -18,10 +18,11 @@ Landmark::Landmark() {
 }
 
 Landmark::Landmark(const cv::KeyPoint& point1, const cv::KeyPoint& point2
-		, const cv::Mat& descp, int sFrame) {
+		, const cv::Mat& descp1, const cv::Mat& descp2, int sFrame) {
 	traceLeft.push_back(point1);
 	traceRight.push_back(point2);
-	descriptor = descp;
+	descpLeft = descp1;
+	descpRight = descp2;
 	startFrame = sFrame;
 	endFrame = -1;
 	isinlier = false;
@@ -61,12 +62,17 @@ int Landmark::getTraceSize() const {
 }
 
 
-void Landmark::setDescp(const cv::Mat& descp) {
-	descriptor = descp;
+void Landmark::setDescpPair(const cv::Mat& descp1, const cv::Mat& descp2) {
+	descpLeft = descp1;
+	descpRight = descp2;
 }
 
-cv::Mat Landmark::getDescp() const{
-	return descriptor;
+cv::Mat Landmark::getLeftDescp() const{
+	return descpLeft;
+}
+
+cv::Mat Landmark::getRightDescp() const{
+	return descpRight;
 }
 
 cv::Point3f Landmark::getLocation() const{
