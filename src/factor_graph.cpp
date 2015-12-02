@@ -42,6 +42,9 @@ FactorGraph::FactorGraph(const Camera& camera) {
 	parameters.relinearizeSkip = 1;
 	isam = gtsam::ISAM2(parameters);
 
+	initial.clear();
+	estimate.clear();
+
 	isFirstLandmark = true;
 }
 
@@ -54,6 +57,7 @@ void FactorGraph::addFirstPose(int poseID) {
 	graph.push_back(PriorFactor<Pose3>(Symbol('x', poseID), Pose3(), poseNoise));
 
 	initial.insert(symbol('x', poseID), Pose3());
+	estimate.insert(symbol('x', poseID), Pose3());
 }
 
 void FactorGraph::addPose(int poseID, const cv::Mat& R, const cv::Mat& T) {
@@ -65,7 +69,7 @@ void FactorGraph::addPose(int poseID, const cv::Mat& R, const cv::Mat& T) {
 }
 
 void FactorGraph::advancePose(int poseID, cv::Mat R, cv::Mat T) {
-	gtsam::Pose3 lastpose = initial.at<gtsam::Pose3>(gtsam::symbol('x', poseID - 1));
+	gtsam::Pose3 lastpose = estimate.at<gtsam::Pose3>(gtsam::symbol('x', poseID - 1));
 	gtsam::Matrix4 pm = lastpose.matrix();
 	// convert R,T to gtsam matrix
 	inverseRT(R,T);
@@ -74,13 +78,19 @@ void FactorGraph::advancePose(int poseID, cv::Mat R, cv::Mat T) {
 	pm = pm * change;
 	// insert the pose
 	initial.insert(gtsam::symbol('x', poseID), gtsam::Pose3(pm));
+
+	// add prior
+	gtsam::noiseModel::Diagonal::shared_ptr poseNoise =
+		gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
+	    gtsam::Vector3::Constant(1), gtsam::Vector3::Constant(1)).finished());
+	graph.push_back(gtsam::PriorFactor<gtsam::Pose3>(gtsam::Symbol('x', poseID), gtsam::Pose3(pm), poseNoise));
 }
 
 void FactorGraph::getPose(int poseID, cv::Mat& R, cv::Mat& T) {
 	R.create(3, 3, cv::DataType<float>::type);
 	T.create(3, 1, cv::DataType<float>::type);
 
-	gtsam::Matrix4 m = initial.at<gtsam::Pose3>(gtsam::symbol('x', poseID)).matrix();
+	gtsam::Matrix4 m = estimate.at<gtsam::Pose3>(gtsam::symbol('x', poseID)).matrix();
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
 			R.at<float>(i, j) = m(i, j);
@@ -102,10 +112,15 @@ void FactorGraph::addLandMark(int landmarkID, const cv::Point3f& location) {
 		graph.push_back(gtsam::PriorFactor<gtsam::Point3>(
 				gtsam::Symbol('l', landmarkID), p, pointNoise));
 	}
+
+	// add prior
+	gtsam::noiseModel::Isotropic::shared_ptr pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
+	graph.push_back(gtsam::PriorFactor<gtsam::Point3>(
+				gtsam::Symbol('l', landmarkID), p, pointNoise));
 }
 
 void FactorGraph::getLandMark(int landmarkID, cv::Point3f& location) {
-	gtsam::Point3 p = initial.at<gtsam::Point3>(gtsam::symbol('l', landmarkID));
+	gtsam::Point3 p = estimate.at<gtsam::Point3>(gtsam::symbol('l', landmarkID));
 	location.x = p.x();
 	location.y = p.y();
 	location.z = p.z();
@@ -124,13 +139,21 @@ void FactorGraph::addStereo(int poseID, int landmarkID,
 	        gtsam::Symbol('x', poseID), gtsam::Symbol('l', landmarkID), KS));
 }
 
-void FactorGraph::update() {
+void FactorGraph::increUpdate() {
 	using namespace gtsam;
 
-	//isam.update(graph, initial);
-	//isam.update();
-	//estimate = isam.calculateEstimate();
+	// incremental
+	isam.update(graph, initial);
+	isam.update();
+	estimate = isam.calculateEstimate();
+	graph.resize(0);
+	initial.clear();
+}
 
+void FactorGraph::batchUpdate() {
+	using namespace gtsam;
+
+	// batch
 	estimate = LevenbergMarquardtOptimizer(graph, initial).optimize();
 	initial = estimate;
 }

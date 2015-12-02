@@ -225,7 +225,8 @@ int main( int argc, char** argv ) {
 
 				// run bundle adjustment
 				long u1 = cv::getTickCount();
-				graph.update();
+				//graph.batchUpdate();
+				graph.increUpdate();
 				long u2 = cv::getTickCount();
 				cout << "optimization:" << float(u2 - u1) / cv::getTickFrequency() << endl;
 				updateLandmark();

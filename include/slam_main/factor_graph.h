@@ -39,7 +39,8 @@ public:
 	void addStereo(int poseID, int landmarkID,
 			const cv::Point2f& loc1, const cv::Point2f& loc2);
 
-	void update();
+	void batchUpdate();
+	void increUpdate();
 
 	void printInitials();
 
