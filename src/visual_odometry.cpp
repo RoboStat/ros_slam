@@ -100,6 +100,9 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame, 
 							break;
 					}
 				}
+			} else {
+				R = cv::Mat::eye(3,3,cv::DataType<float>::type);
+				Tvec = cv::Mat::zeros(3,1,cv::DataType<float>::type);
 			}
 
 			// add stereo factors
