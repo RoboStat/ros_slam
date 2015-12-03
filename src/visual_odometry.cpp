@@ -133,6 +133,12 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame, 
 			featureAssoc->refreshTrials(left_frame, right_frame, i, unmatched, trials);
 			featureAssoc->visualizePair(trials);
 			trialState = true;
+
+			if(trials.size()<8) {
+				//just add them don't wait
+				confirmTrials();
+				trialState = false;
+			}
 		}
 	}
 	long t2 = cv::getTickCount();
