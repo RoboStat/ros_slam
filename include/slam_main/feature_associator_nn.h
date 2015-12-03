@@ -18,7 +18,7 @@ class FeatureAssociatorNN: public FeatureAssociator {
 public:
 	FeatureAssociatorNN();
 	//normal tracking done in all the frames
-	void processImage(
+	void virtual processImage(
 			const cv::Mat& image1,
 			const cv::Mat& image2,
 			int frameNum,
@@ -57,14 +57,17 @@ protected:
 			set<int>& matchPts2);
 
 	bool trackPoint(
-			const cv::KeyPoint& point,
+			const cv::Point2f& point,
 			const cv::Mat& descp,
 			const NNFinder& nnFinder,
 			const vector<cv::KeyPoint>& kpts,
 			const cv::Mat& image,
 			cv::KeyPoint& newPoint,
 			cv::Mat& newDescp,
-			int& matchID);
+			int& matchID,
+			float paramRad,
+			float paramThre,
+			float paramRatio);
 
 	void matchAdd(
 			const vector<cv::KeyPoint>& kpts1,

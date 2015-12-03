@@ -77,7 +77,7 @@ void FeatureAssociatorNN::processImage(
 	//eliminate unMathced points which is too close to matched points
 	for (auto it = matchPts1.begin(); it != matchPts1.end(); it++) {
 		vector<int> nn;
-		nnFinder1.findNN(kpts1[*it],
+		nnFinder1.findNN(kpts1[*it].pt,
 				searchRad / 2, searchRad / 2, searchRad / 2, searchRad / 2, nn);
 		allMatchPts.insert(nn.begin(), nn.end());
 	}
@@ -145,10 +145,10 @@ bool FeatureAssociatorNN::trackLandmark(Landmark& landmark,
 	cv::Mat newDescp1, newDescp2;
 	int matchID1, matchID2;
 	// do track
-	if (trackPoint(point1, landmark.getLeftDescp(), nnFinder1, kpts1, image1,
-			newPoint1, newDescp1, matchID1) &&
-			trackPoint(point2, landmark.getRightDescp(), nnFinder2, kpts2, image2,
-					newPoint2, newDescp2, matchID2)) {
+	if (trackPoint(point1.pt, landmark.getLeftDescp(), nnFinder1, kpts1, image1,
+			newPoint1, newDescp1, matchID1,searchRad, singleThre, doubleRatio) &&
+			trackPoint(point2.pt, landmark.getRightDescp(), nnFinder2, kpts2, image2,
+					newPoint2, newDescp2, matchID2,searchRad, singleThre, doubleRatio)) {
 
 		landmark.appendPointPair(newPoint1, newPoint2);
 		landmark.setDescpPair(newDescp1, newDescp2);
@@ -160,18 +160,21 @@ bool FeatureAssociatorNN::trackLandmark(Landmark& landmark,
 	return false;
 }
 
-bool FeatureAssociatorNN::trackPoint(const cv::KeyPoint& point,
+bool FeatureAssociatorNN::trackPoint(const cv::Point2f& point,
 		const cv::Mat& descp,
 		const NNFinder& nnFinder,
 		const vector<cv::KeyPoint>& kpts,
 		const cv::Mat& image,
 		cv::KeyPoint& newPoint,
 		cv::Mat& newDescp,
-		int& matchID) {
+		int& matchID,
+		float paramRad,
+		float paramThre,
+		float paramRatio) {
 	using namespace cv;
 	// compute nearest neighbour
 	vector<int> boundPtsInd;
-	nnFinder.findNN(point, searchRad, searchRad, searchRad, searchRad, boundPtsInd);
+	nnFinder.findNN(point, paramRad, paramRad, paramRad, paramRad, boundPtsInd);
 
 	// compute descriptors for sub points
 	vector<KeyPoint> subKpts;
@@ -196,9 +199,9 @@ bool FeatureAssociatorNN::trackPoint(const cv::KeyPoint& point,
 		ptMatcher->knnMatch(descp, subDescps, matches, 2);
 
 	// determine whether a good match
-	if (!matches.empty() && matches[0][0].distance < singleThre &&
+	if (!matches.empty() && matches[0][0].distance < paramThre &&
 			(matches[0].size() == 1 || (matches[0].size() == 2 &&
-					(matches[0][0].distance / matches[0][1].distance) < doubleRatio))) {
+					(matches[0][0].distance / matches[0][1].distance) < paramRatio))) {
 
 		newPoint = subKpts[matches[0][0].trainIdx];
 		newDescp = subDescps.row(matches[0][0].trainIdx).clone();

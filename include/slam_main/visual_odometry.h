@@ -9,7 +9,6 @@
 #define INCLUDE_SLAM_MAIN_VISUAL_ODOMETRY_H_
 
 #include <slam_main/feature_associator.h>
-#include <slam_main/feature_associator_nn.h>
 #include <slam_main/factor_graph.h>
 #include <slam_main/camera.h>
 //std

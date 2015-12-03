@@ -6,13 +6,15 @@
  */
 #include <slam_main/visual_odometry.h>
 #include <slam_main/helper.h>
+#include <slam_main/feature_associator_nn.h>
+#include <slam_main/feature_associator_nn2.h>
 //opencv
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 
 VisualOdometry::VisualOdometry(const Camera& camera) :
 	graph(camera){
-	featureAssoc = new FeatureAssociatorNN();
+	featureAssoc = new FeatureAssociatorNN2(camera);
 }
 
 VisualOdometry::~VisualOdometry() {

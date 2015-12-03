@@ -61,6 +61,14 @@ int Landmark::getTraceSize() const {
 	return traceLeft.size();
 }
 
+void Landmark::setPredPair(const cv::Point2f& left, const cv::Point2f& right) {
+	predLeft = left;
+	predRight = right;
+}
+void Landmark::getPredPair(cv::Point2f& left, cv::Point2f& right) {
+	left = predLeft;
+	right = predRight;
+}
 
 void Landmark::setDescpPair(const cv::Mat& descp1, const cv::Mat& descp2) {
 	descpLeft = descp1;

@@ -12,7 +12,7 @@ class NNFinder {
 public:
 	NNFinder(const std::vector<cv::KeyPoint>& points);
 	void build(const std::vector<cv::KeyPoint>& points);
-	void findNN(const cv::KeyPoint& point,
+	void findNN(const cv::Point2f& point,
 				float xl, float xh, float yl, float yh,
 				std::vector<int>& output) const;
 

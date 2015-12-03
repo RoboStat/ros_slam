@@ -24,6 +24,9 @@ public:
 	cv::KeyPoint curLeftPoint() const;
 	int getTraceSize() const;
 
+	void setPredPair(const cv::Point2f& left, const cv::Point2f& right);
+	void getPredPair(cv::Point2f& left, cv::Point2f& right);
+
 	void setDescpPair(const cv::Mat& descp1, const cv::Mat& descp2);
 	cv::Mat getLeftDescp() const;
 	cv::Mat getRightDescp() const;
@@ -43,6 +46,9 @@ private:
 	// the sequence of tracked location in previous images
 	vector<cv::KeyPoint> traceLeft;
 	vector<cv::KeyPoint> traceRight;
+	// predicted location of landmakr in current frame
+	cv::Point2f predLeft;
+	cv::Point2f predRight;
 	// latest descriptor calculated from image
 	cv::Mat descpLeft;
 	cv::Mat descpRight;

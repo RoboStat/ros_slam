@@ -11,6 +11,7 @@ find_package(Boost REQUIRED COMPONENTS
 	system
 )
 
+# set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
 
 catkin_package(
@@ -29,6 +30,7 @@ add_executable(slam_main_node
 	src/nn_finder.cpp
 	src/feature_associator.cpp
 	src/feature_associator_nn.cpp
+	src/feature_associator_nn2.cpp
 	src/factor_graph.cpp
 	src/visual_odometry.cpp 
 	src/slam_main_node.cpp)

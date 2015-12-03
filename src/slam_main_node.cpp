@@ -17,7 +17,7 @@ int main( int argc, char** argv ) {
 	cv::resizeWindow("SLAM",760,500);
 
 	// video source
-	int startFrame = 1;
+	int startFrame = 0;
 	int endFrame = 634;
 	string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/sensor_data/";
 

@@ -20,14 +20,14 @@ void NNFinder::build(const std::vector<cv::KeyPoint>& points) {
 	}
 }
 
-void NNFinder::findNN(const cv::KeyPoint& point,
+void NNFinder::findNN(const cv::Point2f& point,
 					  float xl, float xh, float yl, float yh,
 					  std::vector<int>& output) const{
 
 	using namespace cv;
 	using namespace std;
 
-	Point2f pt = point.pt;
+	Point2f pt = point;
 	multimap<float, int>::const_iterator itl, ith;
 
 	// filter in x range
