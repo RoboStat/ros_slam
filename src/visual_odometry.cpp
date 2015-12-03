@@ -46,7 +46,8 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame, 
 
 		if (trialState && (trials.size() < trialThre || landmarks.empty())) {
 			cout << "--confirm all trials--" << endl;
-			confirmTrials();
+			if(!trials.empty())
+				confirmTrials();
 			trialState = false;
 		}
 
