@@ -92,11 +92,13 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame, 
 
 			//set inliers
 			int j = 0, count = 0;
-			for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
-				if (count++ == inliers.at<int>(j, 0)) {
-					it->second.setInlier(true);
-					if (++j >= inliers.rows)
-						break;
+			if(inliers.rows>0) {
+				for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
+					if (count++ == inliers.at<int>(j, 0)) {
+						it->second.setInlier(true);
+						if (++j >= inliers.rows)
+							break;
+					}
 				}
 			}
 
