@@ -65,6 +65,9 @@ private:
 	// start end frame
 	int startFrame = 0;
 	int endFrame = 1000;
+
+	// params
+	int directAddThre = 20;
 };
 
 

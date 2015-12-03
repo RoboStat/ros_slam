@@ -43,6 +43,7 @@ private:
 	float searchRad2 = 2;
 	float singleThre2 = 80;
 	float doubleRatio2 = 0.9;
+	float eliminateRad = 3;
 };
 
 #endif

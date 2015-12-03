@@ -143,7 +143,7 @@ void FeatureAssociatorNN2::processImage(
 	for (auto it = matchPts1.begin(); it != matchPts1.end(); it++) {
 		vector<int> nn;
 		nnFinder1.findNN(kpts1[*it].pt,
-				searchRad / 2, searchRad / 2, searchRad / 2, searchRad / 2, nn);
+				eliminateRad, eliminateRad, eliminateRad, eliminateRad, nn);
 		allMatchPts.insert(nn.begin(), nn.end());
 	}
 	// generate the unmatched points

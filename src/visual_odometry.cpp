@@ -46,8 +46,7 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame, 
 
 		if (trialState && (trials.size() < trialThre || landmarks.empty())) {
 			cout << "--confirm all trials--" << endl;
-			if(!trials.empty())
-				confirmTrials();
+			confirmTrials();
 			trialState = false;
 		}
 
@@ -134,7 +133,7 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame, 
 			featureAssoc->visualizePair(trials);
 			trialState = true;
 
-			if(trials.size()<8) {
+			if(trials.size()<directAddThre) {
 				//just add them don't wait
 				confirmTrials();
 				trialState = false;
@@ -203,6 +202,9 @@ void VisualOdometry::triangulate(const cv::Mat& pts1,
 }
 
 void VisualOdometry::confirmTrials() {
+	// empty check
+	if(trials.empty())
+		return;
 	// triangulate landmarks
 	// prepare points
 	cv::Mat pts1(2, trials.size(), cv::DataType<float>::type),
