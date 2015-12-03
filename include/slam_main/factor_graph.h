@@ -46,8 +46,8 @@ public:
 	void increUpdate();
 
 	void printInitials();
-	visualization_msgs::Marker visualizeTraj();
-	visualization_msgs::Marker visualizeLandmark();
+	void visualizeTraj(visualization_msgs::Marker& marker);
+	void visualizeLandmark(visualization_msgs::Marker& marker);
 
 private:
 	gtsam::Cal3_S2::shared_ptr K;

@@ -164,9 +164,9 @@ void FactorGraph::printInitials() {
 	//graph.print();
 }
 
-visualization_msgs::Marker FactorGraph::visualizeTraj() {
-	visualization_msgs::Marker marker = createPathMarker();
+void FactorGraph::visualizeTraj(visualization_msgs::Marker& marker) {
 	gtsam::Values poses = estimate.filter<gtsam::Pose3>();
+	marker.header.stamp = ros::Time::now();
 	marker.points.clear();
 	for (auto pose : poses) {
 		gtsam::Pose3 p = static_cast<gtsam::Pose3&>(pose.value);
@@ -176,12 +176,11 @@ visualization_msgs::Marker FactorGraph::visualizeTraj() {
 		pp.z = p.z();
 		marker.points.push_back(pp);
 	}
-	return marker;
 }
 
-visualization_msgs::Marker FactorGraph::visualizeLandmark() {
-	visualization_msgs::Marker marker = createPointMarker();
+void FactorGraph::visualizeLandmark(visualization_msgs::Marker& marker) {
 	gtsam::Values landmarks = estimate.filter<gtsam::Point3>();
+	marker.header.stamp = ros::Time::now();
 	marker.points.clear();
 	for (auto landmark : landmarks) {
 		gtsam::Point3 l = static_cast<gtsam::Point3&>(landmark.value);
@@ -191,7 +190,5 @@ visualization_msgs::Marker FactorGraph::visualizeLandmark() {
 		ll.z = l.z();
 		marker.points.push_back(ll);
 	}
-
-	return marker;
 }
 

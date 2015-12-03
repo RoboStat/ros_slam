@@ -5,6 +5,8 @@
  *      Author: wenda
  */
 #include <slam_main/helper.h>
+//std
+#include <math.h>
 
 std::string fixedNum(int value, int digits) {
 	std::string result;
@@ -81,6 +83,49 @@ visualization_msgs::Marker createPointMarker() {
 
 	return marker;
 }
+
+geometry_msgs::PoseStamped createPose(cv::Mat& R, cv::Mat& T) {
+	geometry_msgs::PoseStamped poseStamp;
+	poseStamp.header.frame_id = "/my_frame";
+	poseStamp.header.stamp = ros::Time::now();
+
+	geometry_msgs::Pose& pose = poseStamp.pose;
+	pose.position.x = T.at<float>(0);
+	pose.position.y = T.at<float>(1);
+	pose.position.z = T.at<float>(2);
+
+	// quaternian conversion
+	float w = sqrt(1.0 + R.at<float>(0,0) + R.at<float>(1,1)
+			+ R.at<float>(2,2)) / 2.0;
+	float x = (R.at<float>(2,1)-R.at<float>(1,2))/(4.0*w);
+	float y = (R.at<float>(0,2)-R.at<float>(2,0))/(4.0*w);
+	float z = (R.at<float>(1,0)-R.at<float>(0,1))/(4.0*w);
+	pose.orientation.w = w;
+	pose.orientation.x = x;
+	pose.orientation.y = y;
+	pose.orientation.z = z;
+
+	return poseStamp;
+}
+
+tf::Transform createTF(cv::Mat& R, cv::Mat& T) {
+	tf::Transform transform;
+	transform.setOrigin(tf::Vector3(T.at<float>(0),
+			T.at<float>(1),
+			T.at<float>(2)));
+
+	// quaternian conversion
+	float w = sqrt(1.0 + R.at<float>(0,0) + R.at<float>(1,1)
+				+ R.at<float>(2,2)) / 2.0;
+	float x = (R.at<float>(2,1)-R.at<float>(1,2))/(4.0*w);
+	float y = (R.at<float>(0,2)-R.at<float>(2,0))/(4.0*w);
+	float z = (R.at<float>(1,0)-R.at<float>(0,1))/(4.0*w);
+	tf::Quaternion q(x,y,z,w);
+	transform.setRotation(q);
+
+	return transform;
+}
+
 
 void inverseRT(cv::Mat& R, cv::Mat& T) {
 	R = R.t();

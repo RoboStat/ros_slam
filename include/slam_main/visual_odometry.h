@@ -28,8 +28,8 @@ public:
 	// get result
 	bool getRT(cv::Mat& R, cv::Mat& T, int i);
 	void getDisplayFrame(cv::Mat& displayFrame);
-	visualization_msgs::Marker visualizeTraj();
-	visualization_msgs::Marker visualizeLandmark();
+	void visualizeTraj(visualization_msgs::Marker& marker);
+	void visualizeLandmark(visualization_msgs::Marker& marker);
 
 private:
 	void updateLandmark();

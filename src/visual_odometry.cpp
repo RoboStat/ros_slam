@@ -173,12 +173,12 @@ void VisualOdometry::updateLandmark() {
 	}
 }
 
-visualization_msgs::Marker VisualOdometry::visualizeTraj() {
-	return graph.visualizeTraj();
+void VisualOdometry::visualizeTraj(visualization_msgs::Marker& marker) {
+	return graph.visualizeTraj(marker);
 }
 
-visualization_msgs::Marker VisualOdometry::visualizeLandmark() {
-	return graph.visualizeLandmark();
+void VisualOdometry::visualizeLandmark(visualization_msgs::Marker& marker) {
+	return graph.visualizeLandmark(marker);
 }
 
 // initialize a key frame

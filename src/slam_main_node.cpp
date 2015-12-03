@@ -8,6 +8,7 @@
 //ros
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
+#include <tf/transform_broadcaster.h>
 
 using namespace std;
 
@@ -27,10 +28,16 @@ int main( int argc, char** argv ) {
 	VisualOdometry vo(camera);
 	vo.setStartEndFrame(startFrame, endFrame);
 
-	//rviz marker setup
+	//rviz visualization setup
 	ros::init(argc, argv, "slam_traj");
 	ros::NodeHandle n;
 	ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
+	ros::Publisher pose_pub = n.advertise<geometry_msgs::PoseStamped>("current_pose", 1);
+	visualization_msgs::Marker trajMarker = createPathMarker();
+	visualization_msgs::Marker pointMarker = createPointMarker();
+
+	//tf setup
+	tf::TransformBroadcaster tfbr;
 
 	for (int i = startFrame; i < endFrame; i++) {
 		//read image
@@ -43,8 +50,18 @@ int main( int argc, char** argv ) {
 		//frame info
 		cv::Mat curR,curT;
 		if(vo.getRT(curR, curT,i)) {
-			marker_pub.publish(vo.visualizeTraj());
-			marker_pub.publish(vo.visualizeLandmark());
+			// publish trajectory
+			vo.visualizeTraj(trajMarker);
+			marker_pub.publish(trajMarker);
+			// publish landmarks
+			vo.visualizeLandmark(pointMarker);
+			marker_pub.publish(pointMarker);
+			// publish current pose
+			pose_pub.publish(createPose(curR,curT));
+			// publish tf
+			tfbr.sendTransform(tf::StampedTransform(
+					createTF(curR,curT), ros::Time::now(), "/my_frame",
+					"tf_slam"));
 		}
 		cout << "current pose:" << curR <<endl;
 		cout << curT << endl;
