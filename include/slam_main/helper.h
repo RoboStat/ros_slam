@@ -19,7 +19,8 @@
 
 std::string fixedNum(int value, int digits = 3);
 
-visualization_msgs::Marker createMarker();
+visualization_msgs::Marker createPathMarker();
+visualization_msgs::Marker createPointMarker();
 
 void inverseRT(cv::Mat& R, cv::Mat& T);
 cv::Mat identityRT();

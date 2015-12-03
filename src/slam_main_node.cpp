@@ -17,9 +17,10 @@ int main( int argc, char** argv ) {
 	cv::resizeWindow("SLAM",760,500);
 
 	// video source
-	int startFrame = 0;
-	int endFrame = 634;
-	string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/sensor_data/";
+	int startFrame = 380;
+	int endFrame = 4000;
+	//string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/sensor_data/";
+	string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/NSHLevel2_Images/";
 
 	// visual odometry stuff
 	Camera camera;
@@ -30,27 +31,20 @@ int main( int argc, char** argv ) {
 	ros::init(argc, argv, "slam_traj");
 	ros::NodeHandle n;
 	ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
-	visualization_msgs::Marker marker = createMarker();
 
 	for (int i = startFrame; i < endFrame; i++) {
 		//read image
-		cv::Mat left_frame = cv::imread(path + "left" + fixedNum(i) + ".jpg");
-		cv::Mat right_frame = cv::imread(path + "right" + fixedNum(i) + ".jpg");
+		cv::Mat left_frame = cv::imread(path + "left" + fixedNum(i,4) + ".jpg");
+		cv::Mat right_frame = cv::imread(path + "right" + fixedNum(i,4) + ".jpg");
 
 		// run vo
 		vo.run(left_frame,right_frame,i);
 
 		//frame info
 		cv::Mat curR,curT;
-		if(vo.getRT(curR, curT,i)){
-			//send path to rviz
-			geometry_msgs::Point new_p;
-			new_p.x = curT.at<float>(0, 0);
-			new_p.y = curT.at<float>(1, 0);
-			new_p.z = curT.at<float>(2, 0);
-
-			marker.points.push_back(new_p);
-			marker_pub.publish(marker);
+		if(vo.getRT(curR, curT,i)) {
+			marker_pub.publish(vo.visualizeTraj());
+			marker_pub.publish(vo.visualizeLandmark());
 		}
 		cout << "current pose:" << curR <<endl;
 		cout << curT << endl;

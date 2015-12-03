@@ -32,11 +32,11 @@ FactorGraph::FactorGraph(const Camera& camera) {
 					0.0, camera.principalPoint.x, camera.principalPoint.y));
 
 	KS = gtsam::Cal3_S2Stereo::shared_ptr(
-			new gtsam::Cal3_S2Stereo(camera.focalLength,camera.focalLength,
-					0.0,camera.principalPoint.x, camera.principalPoint.y,camera.baseline));
+			new gtsam::Cal3_S2Stereo(camera.focalLength, camera.focalLength,
+					0.0, camera.principalPoint.x, camera.principalPoint.y, camera.baseline));
 
 	measurementNoise = gtsam::noiseModel::Isotropic::Sigma(2, 1.0);
-	stereoNoise = gtsam::noiseModel::Isotropic::Sigma(3,1);
+	stereoNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
 
 	parameters.relinearizeThreshold = 0.01;
 	parameters.relinearizeSkip = 1;
@@ -64,16 +64,16 @@ void FactorGraph::addPose(int poseID, const cv::Mat& R, const cv::Mat& T) {
 	cv::Mat invR = R.t();
 	cv::Mat invT = -R * T;
 
-	initial.insert(gtsam::symbol('x',poseID),
-			gtsam::Pose3(convertFromCV(invR,invT)));
+	initial.insert(gtsam::symbol('x', poseID),
+			gtsam::Pose3(convertFromCV(invR, invT)));
 }
 
 void FactorGraph::advancePose(int poseID, cv::Mat R, cv::Mat T) {
 	gtsam::Pose3 lastpose = estimate.at<gtsam::Pose3>(gtsam::symbol('x', poseID - 1));
 	gtsam::Matrix4 pm = lastpose.matrix();
 	// convert R,T to gtsam matrix
-	inverseRT(R,T);
-	gtsam::Matrix4 change = convertFromCV(R,T);
+	inverseRT(R, T);
+	gtsam::Matrix4 change = convertFromCV(R, T);
 	// increment the pose
 	pm = pm * change;
 	// insert the pose
@@ -81,8 +81,8 @@ void FactorGraph::advancePose(int poseID, cv::Mat R, cv::Mat T) {
 
 	// add prior
 	gtsam::noiseModel::Diagonal::shared_ptr poseNoise =
-		gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
-	    gtsam::Vector3::Constant(1), gtsam::Vector3::Constant(1)).finished());
+			gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
+					gtsam::Vector3::Constant(1), gtsam::Vector3::Constant(1)).finished());
 	graph.push_back(gtsam::PriorFactor<gtsam::Pose3>(gtsam::Symbol('x', poseID), gtsam::Pose3(pm), poseNoise));
 }
 
@@ -116,7 +116,7 @@ void FactorGraph::addLandMark(int landmarkID, const cv::Point3f& location) {
 	// add prior
 	gtsam::noiseModel::Isotropic::shared_ptr pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
 	graph.push_back(gtsam::PriorFactor<gtsam::Point3>(
-				gtsam::Symbol('l', landmarkID), p, pointNoise));
+			gtsam::Symbol('l', landmarkID), p, pointNoise));
 }
 
 void FactorGraph::getLandMark(int landmarkID, cv::Point3f& location) {
@@ -133,10 +133,10 @@ void FactorGraph::addProjection(int poseID, int landmarkID, const cv::Point2f& l
 }
 
 void FactorGraph::addStereo(int poseID, int landmarkID,
-			const cv::Point2f& loc1, const cv::Point2f& loc2) {
+		const cv::Point2f& loc1, const cv::Point2f& loc2) {
 	graph.push_back(gtsam::GenericStereoFactor<gtsam::Pose3, gtsam::Point3>(
 			gtsam::StereoPoint2(loc1.x, loc2.x, loc1.y), stereoNoise,
-	        gtsam::Symbol('x', poseID), gtsam::Symbol('l', landmarkID), KS));
+			gtsam::Symbol('x', poseID), gtsam::Symbol('l', landmarkID), KS));
 }
 
 void FactorGraph::increUpdate() {
@@ -162,5 +162,36 @@ void FactorGraph::printInitials() {
 	std::cout << "---------Graph Initial Estimation--------" << std::endl;
 	initial.print();
 	//graph.print();
+}
+
+visualization_msgs::Marker FactorGraph::visualizeTraj() {
+	visualization_msgs::Marker marker = createPathMarker();
+	gtsam::Values poses = estimate.filter<gtsam::Pose3>();
+	marker.points.clear();
+	for (auto pose : poses) {
+		gtsam::Pose3 p = static_cast<gtsam::Pose3&>(pose.value);
+		geometry_msgs::Point pp;
+		pp.x = p.x();
+		pp.y = p.y();
+		pp.z = p.z();
+		marker.points.push_back(pp);
+	}
+	return marker;
+}
+
+visualization_msgs::Marker FactorGraph::visualizeLandmark() {
+	visualization_msgs::Marker marker = createPointMarker();
+	gtsam::Values landmarks = estimate.filter<gtsam::Point3>();
+	marker.points.clear();
+	for (auto landmark : landmarks) {
+		gtsam::Point3 l = static_cast<gtsam::Point3&>(landmark.value);
+		geometry_msgs::Point ll;
+		ll.x = l.x();
+		ll.y = l.y();
+		ll.z = l.z();
+		marker.points.push_back(ll);
+	}
+
+	return marker;
 }
 

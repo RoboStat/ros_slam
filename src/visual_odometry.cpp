@@ -162,6 +162,14 @@ void VisualOdometry::updateLandmark() {
 	}
 }
 
+visualization_msgs::Marker VisualOdometry::visualizeTraj() {
+	return graph.visualizeTraj();
+}
+
+visualization_msgs::Marker VisualOdometry::visualizeLandmark() {
+	return graph.visualizeLandmark();
+}
+
 // initialize a key frame
 void VisualOdometry::triangulate(const cv::Mat& pts1,
 		const cv::Mat& pts2,

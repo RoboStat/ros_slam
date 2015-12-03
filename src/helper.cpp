@@ -16,11 +16,9 @@ std::string fixedNum(int value, int digits) {
 	return result;
 }
 
-visualization_msgs::Marker createMarker() {
+visualization_msgs::Marker createPathMarker() {
 
 	visualization_msgs::Marker marker;
-	// draw line b/w points
-	uint32_t shape = visualization_msgs::Marker::LINE_STRIP;
 
 	// Set the frame ID and timestamp.  See the TF tutorials for information on these.
 	marker.header.frame_id = "/my_frame";
@@ -32,7 +30,7 @@ visualization_msgs::Marker createMarker() {
 	marker.id = 0;
 
 	// Set the marker type to our shape from earlier
-	marker.type = shape;
+	marker.type = visualization_msgs::Marker::LINE_STRIP;
 
 	// Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
 	marker.action = visualization_msgs::Marker::ADD;
@@ -47,17 +45,40 @@ visualization_msgs::Marker createMarker() {
 	marker.pose.orientation.w = 1.0;
 
 	// Set the scale of the marker -- 1x1x1 here means 1m on a side
-	marker.scale.x = 0.01;
+	marker.scale.x = 0.05;
 	marker.scale.y = 0.05;
 	marker.scale.z = 1.0;
 
 	// Set the color -- be sure to set alpha to something non-zero!
+	marker.color.r = 1.0f;
+	marker.color.g = 0.0f;
+	marker.color.b = 0.0f;
+	marker.color.a = 1.0;
+
+	//marker.lifetime = ros::Duration();
+	return marker;
+}
+
+visualization_msgs::Marker createPointMarker() {
+	visualization_msgs::Marker marker;
+
+	marker.header.frame_id = "/my_frame";
+	marker.header.stamp = ros::Time::now();
+	marker.ns = "basic_shapes";
+	marker.action = visualization_msgs::Marker::ADD;
+
+	marker.id = 1;
+	marker.type = visualization_msgs::Marker::POINTS;
+
 	marker.color.r = 0.0f;
 	marker.color.g = 1.0f;
 	marker.color.b = 0.0f;
 	marker.color.a = 1.0;
 
-	marker.lifetime = ros::Duration();
+	marker.scale.x = 0.01;
+	marker.scale.y = 0.01;
+	marker.scale.z = 0.01;
+
 	return marker;
 }
 
@@ -66,21 +87,19 @@ void inverseRT(cv::Mat& R, cv::Mat& T) {
 	T = -R * T;
 }
 
-cv::Mat identityRT(){
-	cv::Mat m(3,4,cv::DataType<float>::type,float(0));
-	m.at<float>(0,0)=1;
-	m.at<float>(1,1)=1;
-	m.at<float>(2,2)=1;
+cv::Mat identityRT() {
+	cv::Mat m(3, 4, cv::DataType<float>::type, float(0));
+	m.at<float>(0, 0) = 1;
+	m.at<float>(1, 1) = 1;
+	m.at<float>(2, 2) = 1;
 	return m;
 }
 
-cv::Mat fullRT(const cv::Mat& R, const cv::Mat& T){
-	cv::Mat RT(4,4,cv::DataType<float>::type, float(0));
-	R.copyTo(RT.colRange(0,3).rowRange(0,3));
-	T.copyTo(RT.col(3).rowRange(0,3));
-	RT.at<float>(3,3)=1;
+cv::Mat fullRT(const cv::Mat& R, const cv::Mat& T) {
+	cv::Mat RT(4, 4, cv::DataType<float>::type, float(0));
+	R.copyTo(RT.colRange(0, 3).rowRange(0, 3));
+	T.copyTo(RT.col(3).rowRange(0, 3));
+	RT.at<float>(3, 3) = 1;
 	return RT;
 }
-
-
 

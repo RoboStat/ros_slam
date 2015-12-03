@@ -22,6 +22,9 @@
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/Values.h>
+//ros
+#include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
 
 class FactorGraph {
 public:
@@ -43,6 +46,8 @@ public:
 	void increUpdate();
 
 	void printInitials();
+	visualization_msgs::Marker visualizeTraj();
+	visualization_msgs::Marker visualizeLandmark();
 
 private:
 	gtsam::Cal3_S2::shared_ptr K;
