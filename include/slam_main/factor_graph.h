@@ -33,6 +33,7 @@ public:
 	void addFirstPose(int poseID);
 	void addPose(int poseID, const cv::Mat& R, const cv::Mat& T);
 	void advancePose(int poseID, cv::Mat R, cv::Mat T);
+	void advancePoseTrivial(int poseID);
 	void getPose(int poseID, cv::Mat& R, cv::Mat& T);
 
 	void addLandMark(int landmarkID, const cv::Point3f& location);
@@ -52,8 +53,14 @@ public:
 private:
 	gtsam::Cal3_S2::shared_ptr K;
 	gtsam::Cal3_S2Stereo::shared_ptr KS;
+
+	//observation noise
 	gtsam::noiseModel::Isotropic::shared_ptr measurementNoise;
 	gtsam::noiseModel::Isotropic::shared_ptr stereoNoise;
+	//prior noise
+	gtsam::noiseModel::Diagonal::shared_ptr poseNoise;
+	gtsam::noiseModel::Isotropic::shared_ptr pointNoise;
+
 	gtsam::ISAM2Params parameters;
 	gtsam::ISAM2 isam;
 

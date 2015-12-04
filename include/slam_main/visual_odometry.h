@@ -15,18 +15,19 @@
 #include <vector>
 #include <map>
 
+enum VOState {VO_START,VO_BOOT,VO_NORMAL};
+
 class VisualOdometry {
 public:
 	// init
 	VisualOdometry(const Camera& camera);
 	~VisualOdometry();
-	void setStartEndFrame(int start, int end);
 
 	// run
-	long run(const cv::Mat& left_frame, const cv::Mat& right_frame, int i);
+	long run(const cv::Mat& left_frame, const cv::Mat& right_frame);
 
 	// get result
-	bool getRT(cv::Mat& R, cv::Mat& T, int i);
+	bool getRT(cv::Mat& R, cv::Mat& T);
 	void getDisplayFrame(cv::Mat& displayFrame);
 	void visualizeTraj(visualization_msgs::Marker& marker);
 	void visualizeLandmark(visualization_msgs::Marker& marker);
@@ -60,11 +61,9 @@ private:
 	std::vector<cv::Mat> allT;
 
 	// states
+	VOState state = VO_START;
 	bool trialState = true;
-
-	// start end frame
-	int startFrame = 0;
-	int endFrame = 1000;
+	int frameCount = 0;
 
 	// params
 	int directAddThre = 20;

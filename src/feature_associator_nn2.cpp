@@ -35,35 +35,35 @@ void FeatureAssociatorNN2::processImage(
 	//mathced points
 	set<int> matchPts1, matchPts2;
 
-	// track all potential landmark points
-	auto tit = trials.begin();
-	while (tit != trials.end()) {
-		if (trackLandmark(*tit, image1, image2, kpts1, kpts2,
-				nnFinder1, nnFinder2, matchPts1, matchPts2)) {
-			tit++;
-		} else {
-			tit = trials.erase(tit);
+	// simple tracking for trials, when there is no landmark
+	if (landmarks.empty()) {
+		auto tit = trials.begin();
+		while (tit != trials.end()) {
+			if (trackLandmark(*tit, image1, image2, kpts1, kpts2,
+					nnFinder1, nnFinder2, matchPts1, matchPts2)) {
+				tit++;
+			} else {
+				tit = trials.erase(tit);
+			}
 		}
-	}
-
-	//run super tracking if landmarks is not empty
-	if (!landmarks.empty()){
+	// two round tracking when there is landmarks
+	} else {
 		//-----------triangulation--------------
-		// prepare points
-		vector<cv::Point2f> tpts1, tpts2;
-		for (auto &landmark : landmarks) {
-			// prepare left right pair
-			cv::KeyPoint point1, point2;
-			landmark.second.curPointPair(point1, point2);
-			tpts1.push_back(point1.pt);
-			tpts2.push_back(point2.pt);
-		}
 		// prepare camera projection matrix
 		cv::Mat camRT = identityRT();
 		cv::Mat p1 = camera.intrinsic * camRT;
 		camRT.at<float>(0, 3) -= camera.baseline;
 		cv::Mat p2 = camera.intrinsic * camRT;
 
+		// prepare points
+		vector<cv::Point2f> tpts1, tpts2;
+		for (auto &landmark : landmarks) {
+			// prepare left right pair for real landmark
+			cv::KeyPoint point1, point2;
+			landmark.second.curPointPair(point1, point2);
+			tpts1.push_back(point1.pt);
+			tpts2.push_back(point2.pt);
+		}
 		// triangulate
 		cv::Mat toutpts;
 		cv::triangulatePoints(p1, p2, tpts1, tpts2, toutpts);
@@ -106,12 +106,12 @@ void FeatureAssociatorNN2::processImage(
 
 		//--------- predict landmark in current frame ---------
 		colcount = 0;
-		p1 = p1 * fullRT(R, Tvec);
-		p2 = p2 * fullRT(R, Tvec);
+		cv::Mat cp1 = p1 * fullRT(R, Tvec);
+		cv::Mat cp2 = p2 * fullRT(R, Tvec);
 		for (auto &landmark : landmarks) {
 			// reprojection
-			cv::Mat leftProj = p1 * toutpts.col(colcount);
-			cv::Mat rightProj = p2 * toutpts.col(colcount);
+			cv::Mat leftProj = cp1 * toutpts.col(colcount);
+			cv::Mat rightProj = cp2 * toutpts.col(colcount);
 			cv::Point2f leftpt(leftProj.at<float>(0) / leftProj.at<float>(2),
 					leftProj.at<float>(1) / leftProj.at<float>(2));
 			cv::Point2f rightpt(rightProj.at<float>(0) / rightProj.at<float>(2),
@@ -123,8 +123,7 @@ void FeatureAssociatorNN2::processImage(
 			colcount++;
 		}
 
-		//-------- second round tracking ------------
-		//track all current landmark points
+		//-------- second round tracking for landmarks ------------
 		auto cit = landmarks.begin();
 		while (cit != landmarks.end()) {
 			if (trackLandmarkByPred(cit->second, image1, image2, kpts1, kpts2,
@@ -133,6 +132,52 @@ void FeatureAssociatorNN2::processImage(
 			} else {
 				cit->second.setEndFrame(frameNum);
 				cit = landmarks.erase(cit);
+			}
+		}
+
+		// ---------- second round tracking for trials -------------
+		if (!trials.empty()) {
+			//--------- fisrt triangulate ---------
+			vector<cv::Point2f> trpts1, trpts2;
+			for (auto &landmark : trials) {
+				// prepare left right pair for trials
+				cv::KeyPoint point1, point2;
+				landmark.curPointPair(point1, point2);
+				trpts1.push_back(point1.pt);
+				trpts2.push_back(point2.pt);
+			}
+			cv::Mat troutpts;
+			cv::triangulatePoints(p1, p2, trpts1, trpts2, troutpts);
+			// normalize
+			troutpts.row(0) = troutpts.row(0) / troutpts.row(3);
+			troutpts.row(1) = troutpts.row(1) / troutpts.row(3);
+			troutpts.row(2) = troutpts.row(2) / troutpts.row(3);
+			troutpts.row(3) = troutpts.row(3) / troutpts.row(3);
+
+			//--------- predict location ------------
+			colcount = 0;
+			for (auto &landmark : trials) {
+				// reprojection
+				cv::Mat leftProj = cp1 * troutpts.col(colcount);
+				cv::Mat rightProj = cp2 * troutpts.col(colcount);
+				cv::Point2f leftpt(leftProj.at<float>(0) / leftProj.at<float>(2),
+						leftProj.at<float>(1) / leftProj.at<float>(2));
+				cv::Point2f rightpt(rightProj.at<float>(0) / rightProj.at<float>(2),
+						rightProj.at<float>(1) / rightProj.at<float>(2));
+
+				landmark.setPredPair(leftpt, rightpt);
+				colcount++;
+			}
+
+			//--------- do the tracking -------------
+			auto tit = trials.begin();
+			while (tit != trials.end()) {
+				if (trackLandmarkByPred(*tit, image1, image2, kpts1, kpts2,
+						nnFinder1, nnFinder2, matchPts1, matchPts2)) {
+					tit++;
+				} else {
+					tit = trials.erase(tit);
+				}
 			}
 		}
 	}

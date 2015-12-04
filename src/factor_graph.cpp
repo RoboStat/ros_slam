@@ -38,6 +38,10 @@ FactorGraph::FactorGraph(const Camera& camera) {
 	measurementNoise = gtsam::noiseModel::Isotropic::Sigma(2, 1.0);
 	stereoNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
 
+	poseNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
+						gtsam::Vector3::Constant(1), gtsam::Vector3::Constant(1)).finished());
+	pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
+
 	parameters.relinearizeThreshold = 0.01;
 	parameters.relinearizeSkip = 1;
 	isam = gtsam::ISAM2(parameters);
@@ -68,6 +72,18 @@ void FactorGraph::addPose(int poseID, const cv::Mat& R, const cv::Mat& T) {
 			gtsam::Pose3(convertFromCV(invR, invT)));
 }
 
+void FactorGraph::advancePoseTrivial(int poseID) {
+	gtsam::Pose3 lastpose = estimate.at<gtsam::Pose3>(gtsam::symbol('x', poseID - 1));
+
+	// insert the pose
+	initial.insert(gtsam::symbol('x', poseID),lastpose);
+	estimate.insert(gtsam::symbol('x', poseID),lastpose);
+
+	// add prior
+	graph.push_back(gtsam::PriorFactor<gtsam::Pose3>(gtsam::Symbol('x', poseID), lastpose, poseNoise));
+}
+
+
 void FactorGraph::advancePose(int poseID, cv::Mat R, cv::Mat T) {
 	gtsam::Pose3 lastpose = estimate.at<gtsam::Pose3>(gtsam::symbol('x', poseID - 1));
 	gtsam::Matrix4 pm = lastpose.matrix();
@@ -80,9 +96,6 @@ void FactorGraph::advancePose(int poseID, cv::Mat R, cv::Mat T) {
 	initial.insert(gtsam::symbol('x', poseID), gtsam::Pose3(pm));
 
 	// add prior
-	gtsam::noiseModel::Diagonal::shared_ptr poseNoise =
-			gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
-					gtsam::Vector3::Constant(1), gtsam::Vector3::Constant(1)).finished());
 	graph.push_back(gtsam::PriorFactor<gtsam::Pose3>(gtsam::Symbol('x', poseID), gtsam::Pose3(pm), poseNoise));
 }
 
@@ -114,7 +127,6 @@ void FactorGraph::addLandMark(int landmarkID, const cv::Point3f& location) {
 	}
 
 	// add prior
-	gtsam::noiseModel::Isotropic::shared_ptr pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
 	graph.push_back(gtsam::PriorFactor<gtsam::Point3>(
 			gtsam::Symbol('l', landmarkID), p, pointNoise));
 }

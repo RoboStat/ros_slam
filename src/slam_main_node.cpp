@@ -18,7 +18,7 @@ int main( int argc, char** argv ) {
 	cv::resizeWindow("SLAM",760,500);
 
 	// video source
-	int startFrame = 300;
+	int startFrame = 1800;
 	int endFrame = 4000;
 	//string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/sensor_data/";
 	string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/NSHLevel2_Images/";
@@ -26,7 +26,6 @@ int main( int argc, char** argv ) {
 	// visual odometry stuff
 	Camera camera;
 	VisualOdometry vo(camera);
-	vo.setStartEndFrame(startFrame, endFrame);
 
 	//rviz visualization setup
 	ros::init(argc, argv, "slam_traj");
@@ -45,11 +44,12 @@ int main( int argc, char** argv ) {
 		cv::Mat right_frame = cv::imread(path + "right" + fixedNum(i,4) + ".jpg");
 
 		// run vo
-		vo.run(left_frame,right_frame,i);
+		cout << "-----------frame " << i << " ------------" << endl;
+		vo.run(left_frame,right_frame);
 
 		//frame info
 		cv::Mat curR,curT;
-		if(vo.getRT(curR, curT,i)) {
+		if(vo.getRT(curR, curT)) {
 			// publish trajectory
 			vo.visualizeTraj(trajMarker);
 			marker_pub.publish(trajMarker);
