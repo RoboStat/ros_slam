@@ -52,7 +52,7 @@ public:
 			vector<Landmark>& trials)=0;
 
 	//visualize the tracking trace of landmarks across frames
-	virtual void visualizeTrace(map<int, Landmark>& landmarks,
+	virtual void visualizeTrace(const map<int, Landmark>& landmarks,
 			const vector<Landmark>& trials);
 	virtual void visualizePair(const vector<Landmark>& trials);
 

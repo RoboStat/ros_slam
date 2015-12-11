@@ -14,8 +14,6 @@
 #define DEBUG 0
 
 FeatureAssociatorNN::FeatureAssociatorNN() :
-		searchRad(10), //10
-		singleThre(50), doubleRatio(0.85),
 		filter(376, 240),
 		flann(new cv::flann::LshIndexParams(20, 10, 2)){
 
@@ -235,10 +233,10 @@ void FeatureAssociatorNN::matchAdd(
 	// pick good ones
 	std::vector<DMatch> goodmatches;
 	for (auto it = matches.begin(); it != matches.end(); it++) {
-		if (it->distance < 60 &&
-			abs(kpts1[it->queryIdx].pt.y - kpts2[it->trainIdx].pt.y) < 2 &&
-			kpts1[it->queryIdx].pt.x - kpts2[it->trainIdx].pt.x < 50 &&
-			kpts1[it->queryIdx].pt.x - kpts2[it->trainIdx].pt.x > 2)
+		if (it->distance < stereoThre &&
+			abs(kpts1[it->queryIdx].pt.y - kpts2[it->trainIdx].pt.y) < yThre &&
+			kpts1[it->queryIdx].pt.x - kpts2[it->trainIdx].pt.x < xMax &&
+			kpts1[it->queryIdx].pt.x - kpts2[it->trainIdx].pt.x > xMin)
 
 			goodmatches.push_back(*it);
 	}

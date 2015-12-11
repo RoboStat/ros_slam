@@ -84,9 +84,16 @@ protected:
 	KeyPointFilter filter;
 	cv::FlannBasedMatcher flann;
 
-	float searchRad;
-	float singleThre;
-	float doubleRatio;
+	//NN match thre
+	float searchRad = 10;
+	float singleThre = 50;
+	float doubleRatio = 0.85;
+
+	// setero match thre
+	float stereoThre = 65;
+	float yThre = 2;
+	float xMax = 40;
+	float xMin = 2;
 };
 
 #endif /* INCLUDE_SLAM_MAIN_FEATURE_ASSOCIATOR_NN_H_ */

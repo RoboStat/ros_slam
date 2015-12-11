@@ -96,6 +96,7 @@ void FeatureAssociatorNN2::processImage(
 			}
 			colcount++;
 		}
+		std::cout<<"NN2-first round match:"<<imgPts.size()<<std::endl;
 
 		//--------- pose estimate via pnp------------
 		cv::Mat R, Rvec, Tvec, inliers;

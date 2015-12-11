@@ -12,6 +12,8 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 
+#define LOOP 1
+
 VisualOdometry::VisualOdometry(const Camera& camera) :
 		graph(camera) {
 	featureAssoc = new FeatureAssociatorNN2(camera);
@@ -59,8 +61,16 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame) 
 			break;
 		}
 
+		// reset inlier
+		for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
+			it->second.setInlier(false);
+		}
+
 		// run tracker
 		featureAssoc->processImage(left_frame, right_frame, frameCount, landmarks, trials, unmatched);
+		// print frame info
+		cout << "track>> landmarks:" << landmarks.size()
+					<< " trials:" << trials.size() << endl;
 
 		// confirm all trails
 		if (trialState && trials.size() < trialThre) {
@@ -121,6 +131,7 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame) 
 			cerr<<"!!!!!!!!!!!!WARNING::PNP FAILED!!!!!!!!!!!"<<endl;
 			R = cv::Mat::eye(3, 3, cv::DataType<float>::type);
 			Tvec = cv::Mat::zeros(3, 1, cv::DataType<float>::type);
+			cv::randn(Tvec,cv::Scalar::all(0),cv::Scalar::all(0.001));
 		}
 
 		// add stereo factors
@@ -137,6 +148,13 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame) 
 		allT.push_back(Tvec);
 		graph.advancePose(frameCount, R, Tvec);
 
+//--------loop constraint hack-------------
+#if LOOP
+		if(frameCount == 3700)
+			graph.addLoopConstraint(0,3700);
+#endif
+//--------loop constraint hack--------------
+
 		// run bundle adjustment
 		long u1 = cv::getTickCount();
 		//graph.batchUpdate();
@@ -151,7 +169,7 @@ long VisualOdometry::run(const cv::Mat& left_frame, const cv::Mat& right_frame) 
 			featureAssoc->visualizePair(trials);
 			trialState = true;
 
-			if (trials.size() < directAddThre || landmarks.size() < 15) {
+			if (trials.size() < directAddThre || landmarks.size() < lowlandThre) {
 				//just add them don't wait
 				cerr<<"!!!!!!!!!!!!WARNING::LOW LANDMARKS!!!!!!!!!!!"<<endl;
 				confirmTrials();
@@ -199,11 +217,15 @@ void VisualOdometry::updateLandmark() {
 }
 
 void VisualOdometry::visualizeTraj(visualization_msgs::Marker& marker) {
-	return graph.visualizeTraj(marker);
+	graph.visualizeTraj(marker);
 }
 
 void VisualOdometry::visualizeLandmark(visualization_msgs::Marker& marker) {
-	return graph.visualizeLandmark(marker);
+	graph.visualizeLandmark(marker);
+}
+
+void VisualOdometry::exportResult(string fileName) {
+	graph.exportGraph(fileName);
 }
 
 // initialize a key frame

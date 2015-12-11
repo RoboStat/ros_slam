@@ -40,8 +40,8 @@ private:
 
 	Camera camera;
 
-	float searchRad2 = 2;
-	float singleThre2 = 80;
+	float searchRad2 = 4;
+	float singleThre2 = 75;
 	float doubleRatio2 = 0.9;
 	float eliminateRad = 3;
 };

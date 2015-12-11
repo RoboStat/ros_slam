@@ -8,6 +8,12 @@
 #include <slam_main/helper.h>
 //std
 #include <iostream>
+#include <fstream>
+//gtsam
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/slam/ProjectionFactor.h>
+#include <gtsam/slam/StereoFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 gtsam::Matrix4 convertFromCV(const cv::Mat& R, const cv::Mat& T) {
 	// convert R,T to gtsam matrix
@@ -27,6 +33,7 @@ gtsam::Matrix4 convertFromCV(const cv::Mat& R, const cv::Mat& T) {
 }
 
 FactorGraph::FactorGraph(const Camera& camera) {
+	// camera parameters
 	K = gtsam::Cal3_S2::shared_ptr(
 			new gtsam::Cal3_S2(camera.focalLength, camera.focalLength,
 					0.0, camera.principalPoint.x, camera.principalPoint.y));
@@ -35,17 +42,23 @@ FactorGraph::FactorGraph(const Camera& camera) {
 			new gtsam::Cal3_S2Stereo(camera.focalLength, camera.focalLength,
 					0.0, camera.principalPoint.x, camera.principalPoint.y, camera.baseline));
 
+	//observation noise just right
 	measurementNoise = gtsam::noiseModel::Isotropic::Sigma(2, 1.0);
-	stereoNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
-
+	stereoNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1.0);
+	//prior noise bigger
 	poseNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
-						gtsam::Vector3::Constant(1), gtsam::Vector3::Constant(1)).finished());
-	pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1);
+						gtsam::Vector3::Constant(10.0), gtsam::Vector3::Constant(10.0)).finished());
+	pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 10.0);
+	//loop noise smaller
+	loopNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) <<
+							gtsam::Vector3::Constant(0.001), gtsam::Vector3::Constant(0.001)).finished());
 
+	//isam parameters
 	parameters.relinearizeThreshold = 0.01;
 	parameters.relinearizeSkip = 1;
 	isam = gtsam::ISAM2(parameters);
 
+	//initial clean up
 	initial.clear();
 	estimate.clear();
 
@@ -151,6 +164,12 @@ void FactorGraph::addStereo(int poseID, int landmarkID,
 			gtsam::Symbol('x', poseID), gtsam::Symbol('l', landmarkID), KS));
 }
 
+void FactorGraph::addLoopConstraint(int poseID1, int poseID2) {
+	graph.push_back(gtsam::BetweenFactor<gtsam::Pose3>(poseID1,poseID2,
+			gtsam::Pose3(gtsam::Matrix4::Identity(4,4)),loopNoise));
+}
+
+
 void FactorGraph::increUpdate() {
 	using namespace gtsam;
 
@@ -201,6 +220,23 @@ void FactorGraph::visualizeLandmark(visualization_msgs::Marker& marker) {
 		ll.y = l.y();
 		ll.z = l.z();
 		marker.points.push_back(ll);
+	}
+}
+
+void FactorGraph::exportGraph(std::string fileName) {
+	using namespace std;
+	ofstream file;
+	file.open(fileName.c_str(),ios::out | ios::trunc);
+	if(file.is_open()) {
+		// iterate over all poses, write to file
+		gtsam::Values poses = estimate.filter<gtsam::Pose3>();
+		for (auto pose : poses) {
+			gtsam::Pose3 p = static_cast<gtsam::Pose3&>(pose.value);
+			file <<p.x()<< " " <<p.y()<< " " <<p.z()<<"\n";
+		}
+		file.close();
+	} else {
+		std::cerr<<"!!!fail to open traj export file!!!"<<std::endl;
 	}
 }
 

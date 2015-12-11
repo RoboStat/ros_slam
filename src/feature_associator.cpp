@@ -18,7 +18,7 @@ FeatureAssociator::~FeatureAssociator(){
 }
 
 void FeatureAssociator::visualizeTrace(
-		 map<int, Landmark>& landmarks,
+		 const map<int, Landmark>& landmarks,
 		 const vector<Landmark>& trials) {
 
 	using namespace cv;
@@ -26,7 +26,6 @@ void FeatureAssociator::visualizeTrace(
 	for (auto it = landmarks.begin(); it != landmarks.end(); it++) {
 		if(it->second.isInlier()) {
 			it->second.visualizeTrace(displayFrame, YELLOW);
-			it->second.setInlier(false);
 		} else {
 			it->second.visualizeTrace(displayFrame, BLUE);
 		}

@@ -2,6 +2,7 @@
 #include <slam_main/helper.h>
 //std
 #include <iostream>
+#include <ctime>
 //opencv
 #include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
@@ -18,11 +19,11 @@ int main( int argc, char** argv ) {
 	cv::resizeWindow("SLAM",760,500);
 
 	// video source
-	int startFrame = 1800;
-	int endFrame = 4000;
+	int startFrame = 350;
+	int endFrame = 4060;
 	//string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/sensor_data/";
 	string path = "/home/wenda/Developer/Autonomy/cmu_16662_p2/NSHLevel2_Images/";
-
+	string exportPath = "/home/wenda/Developer/ros_slam/saved/";
 	// visual odometry stuff
 	Camera camera;
 	VisualOdometry vo(camera);
@@ -73,6 +74,12 @@ int main( int argc, char** argv ) {
 		cv::waitKey(1);
 
 	}
+
+	// export final traj to file
+	time_t now = time(0);
+	string dt = ctime(&now);
+	cout << "exporting traj to file: " << dt <<endl;
+	vo.exportResult(exportPath+dt+".traj");
 
 	return 0;
 }

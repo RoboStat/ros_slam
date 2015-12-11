@@ -16,11 +16,9 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/geometry/Point2.h>
 #include <gtsam/slam/PriorFactor.h>
-#include <gtsam/slam/ProjectionFactor.h>
-#include <gtsam/slam/StereoFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/ISAM2.h>
-#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
 #include <gtsam/nonlinear/Values.h>
 //ros
 #include <ros/ros.h>
@@ -43,12 +41,16 @@ public:
 	void addStereo(int poseID, int landmarkID,
 			const cv::Point2f& loc1, const cv::Point2f& loc2);
 
+	void addLoopConstraint(int poseID1, int poseID2);
+
 	void batchUpdate();
 	void increUpdate();
 
 	void printInitials();
 	void visualizeTraj(visualization_msgs::Marker& marker);
 	void visualizeLandmark(visualization_msgs::Marker& marker);
+
+	void exportGraph(std::string fileName);
 
 private:
 	gtsam::Cal3_S2::shared_ptr K;
@@ -60,6 +62,8 @@ private:
 	//prior noise
 	gtsam::noiseModel::Diagonal::shared_ptr poseNoise;
 	gtsam::noiseModel::Isotropic::shared_ptr pointNoise;
+	//loop noise
+	gtsam::noiseModel::Diagonal::shared_ptr loopNoise;
 
 	gtsam::ISAM2Params parameters;
 	gtsam::ISAM2 isam;

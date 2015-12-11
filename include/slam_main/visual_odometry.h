@@ -31,6 +31,7 @@ public:
 	void getDisplayFrame(cv::Mat& displayFrame);
 	void visualizeTraj(visualization_msgs::Marker& marker);
 	void visualizeLandmark(visualization_msgs::Marker& marker);
+	void exportResult(string fileName);
 
 private:
 	void updateLandmark();
@@ -66,7 +67,8 @@ private:
 	int frameCount = 0;
 
 	// params
-	int directAddThre = 20;
+	int directAddThre = 5;
+	int lowlandThre = 15;
 };
 
 
